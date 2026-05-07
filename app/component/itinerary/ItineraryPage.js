@@ -1298,13 +1298,10 @@ export default function ItineraryPage(props, context) {
             //   infos: JSON_DATA.infos
             // });
           });
-          // console.log(['NOW do the setXTPInfoState JSON_DATA.infos=',JSON_DATA.infos]);
-          // setXTPInfoState(JSON_DATA.infos);
-          // console.log('setXTPInfoState DONE!!!!!!!');
-        } // else {
-        // No xtpPoints found => Must reset the state!
-        // setXTPInfoState([]);
-        // }
+          setXTPInfoState(JSON_DATA.infos);
+        } else {
+          setXTPInfoState([]);
+        }
       } catch (error) {
         // console.log(['error.message=',error.message]);
       }
