@@ -202,7 +202,7 @@ module.exports = {
       {
         // These node_modules packages ship untranspiled ES2018+ / ESM syntax
         test: /\.js$/,
-        include: /node_modules\/(@hsl-fi|@radix-ui|@floating-ui)/,
+        include: /node_modules\/(@hsl-fi|@radix-ui|@floating-ui|fast-xml-parser)/,
         loader: 'babel-loader',
         options: {
           configFile: false,
