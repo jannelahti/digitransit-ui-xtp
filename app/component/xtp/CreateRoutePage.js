@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 /*
  * XTP "Create guided route" editor (plan: docs/plans/guided-route-creator.md).
  * Self-contained (Option B): plain Leaflet (dynamic-imported, SSR-safe), crisp
- * Carto Voyager retina tiles, EventSource stream. Talks to the route-generator
- * sidecar via the nginx-proxied paths below (VTT-only).
+ * Carto Voyager retina tiles, EventSource stream. Review via a React card (not
+ * Leaflet popups). Talks to the route-generator sidecar via nginx (VTT-only).
  */
 const GENERATE_URL = '/api/generate';
 const SAVE_URL = '/api/save';
@@ -41,41 +41,45 @@ function decodePolyline(str) {
 const STYLE = `
 .xtp-wrap { position: relative; height: calc(100vh - 64px); }
 .xtp-map { position: absolute; inset: 0; }
-.xtp-panel {
-  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 2000;
-  background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.22);
-  padding: 14px 16px;
-}
-.xtp-panel h2 { margin: 0 0 4px; font-size: 16px; }
-.xtp-panel .hint { color: #5a6270; font-size: 13px; margin-bottom: 10px; }
-.xtp-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.xtp-spacer { flex: 1; }
-.xtp-btn {
-  border: 1px solid #c7ccd4; background: #fff; color: #1c2430; border-radius: 8px;
-  padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: background .15s, border-color .15s;
-}
-.xtp-btn:hover:not(:disabled) { background: #f1f3f6; }
-.xtp-btn:disabled { opacity: .45; cursor: default; }
-.xtp-btn.primary { background: #1455c0; border-color: #1455c0; color: #fff; }
-.xtp-btn.primary:hover:not(:disabled) { background: #0e459f; }
-.xtp-btn.success { background: #1c7c2f; border-color: #1c7c2f; color: #fff; }
-.xtp-btn.success:hover:not(:disabled) { background: #166626; }
-.xtp-status { font-size: 13px; color: #333; min-height: 18px; display:flex; align-items:center; gap:8px; }
-.xtp-spin { width:16px; height:16px; border:3px solid #c7d3ea; border-top-color:#1455c0; border-radius:50%; animation: xtpspin .8s linear infinite; }
-@keyframes xtpspin { to { transform: rotate(360deg); } }
-.xtp-ctx { display:flex; flex-direction:column; gap:6px; }
-.xtp-ctx button { border:1px solid #c7ccd4; background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px; }
-.xtp-ctx button:hover { background:#f1f3f6; }
-.xtp-nav {
-  position:absolute; top:84px; transform:translateY(-50%); z-index:5;
-  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(0,0,0,.55); color:#fff; font-size:20px; line-height:28px; text-align:center;
-}
-.xtp-nav:hover { background:rgba(0,0,0,.78); }
-.xtp-nav:disabled { opacity:.25; cursor:default; }
-.xtp-nav-l { left:6px; }
-.xtp-nav-r { right:6px; }
+.xtp-panel { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 2000;
+  background:#fff; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.22); padding:14px 16px; }
+.xtp-panel h2 { margin:0 0 4px; font-size:16px; }
+.xtp-panel .hint { color:#5a6270; font-size:13px; margin-bottom:10px; }
+.xtp-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.xtp-spacer { flex:1; }
+.xtp-btn { border:1px solid #c7ccd4; background:#fff; color:#1c2430; border-radius:8px;
+  padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; transition:background .15s; }
+.xtp-btn:hover:not(:disabled){ background:#f1f3f6; }
+.xtp-btn:disabled{ opacity:.45; cursor:default; }
+.xtp-btn.primary{ background:#1455c0; border-color:#1455c0; color:#fff; }
+.xtp-btn.primary:hover:not(:disabled){ background:#0e459f; }
+.xtp-btn.success{ background:#1c7c2f; border-color:#1c7c2f; color:#fff; }
+.xtp-btn.success:hover:not(:disabled){ background:#166626; }
+.xtp-status{ font-size:13px; color:#333; min-height:18px; display:flex; align-items:center; gap:8px; }
+.xtp-spin{ width:16px; height:16px; border:3px solid #c7d3ea; border-top-color:#1455c0; border-radius:50%; animation:xtpspin .8s linear infinite; }
+@keyframes xtpspin { to { transform:rotate(360deg); } }
+.xtp-ctx{ display:flex; flex-direction:column; gap:6px; }
+.xtp-ctx button{ border:1px solid #c7ccd4; background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px; }
+.xtp-ctx button:hover{ background:#f1f3f6; }
+
+.xtp-card{ position:fixed; top:80px; left:50%; transform:translateX(-50%); z-index:2100;
+  width:min(340px,calc(100vw - 32px)); background:#11151c; color:#fff; border-radius:12px;
+  overflow:hidden; box-shadow:0 8px 28px rgba(0,0,0,.4); }
+.xtp-card-imgwrap{ position:relative; background:#000; }
+.xtp-card-imgwrap img{ display:block; width:100%; }
+.xtp-card-close{ position:absolute; top:6px; right:6px; z-index:3; width:26px; height:26px;
+  border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:16px; cursor:pointer; }
+.xtp-card-close:hover{ background:rgba(0,0,0,.8); }
+.xtp-nav{ position:absolute; top:50%; transform:translateY(-50%); z-index:3; width:34px; height:34px;
+  border:none; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:22px; line-height:32px; cursor:pointer; }
+.xtp-nav:hover:not(:disabled){ background:rgba(0,0,0,.8); }
+.xtp-nav:disabled{ opacity:.25; cursor:default; }
+.xtp-nav-l{ left:8px; } .xtp-nav-r{ right:8px; }
+.xtp-card-meta{ padding:10px 12px; }
+.xtp-card-meta .lbl{ font-size:13px; font-weight:700; margin-bottom:3px; }
+.xtp-card-meta .cap{ font-size:11px; color:#aab2c0; margin-bottom:8px; }
+.xtp-card-meta .again{ border:1px solid #3a4150; background:#1b212b; color:#fff; border-radius:6px; padding:5px 10px; font-size:12px; cursor:pointer; }
+.xtp-card-meta .again:hover{ background:#262e3a; }
 `;
 
 const CreateRoutePage = () => {
@@ -87,8 +91,7 @@ const CreateRoutePage = () => {
   const routeLine = useRef(null);
   const wpLayer = useRef(null);
   const es = useRef(null);
-  const draft = useRef(null);
-  const wpMarkers = useRef({});
+  const meta = useRef(null); // route meta for /save
   const busy = useRef(false);
 
   const [start, setStart] = useState(null);
@@ -96,6 +99,8 @@ const CreateRoutePage = () => {
   const [phase, setPhase] = useState('idle');
   const [status, setStatus] = useState('Click the map to set the start point (or right-click).');
   const [counts, setCounts] = useState({ found: 0, skipped: 0 });
+  const [waypoints, setWaypoints] = useState([]);
+  const [selected, setSelected] = useState(null); // selected waypoint position
 
   useEffect(() => {
     let cancelled = false;
@@ -151,11 +156,9 @@ const CreateRoutePage = () => {
       });
     }
     setter({ lat: latlng.lat, lon: latlng.lng });
-    if (which === 'start' && !endMarker.current) {
-      setStatus('Now click the map to set the end point (or right-click).');
-    } else {
-      setStatus('Ready — press “Auto generate guided route”.');
-    }
+    setStatus(which === 'start' && !endMarker.current
+      ? 'Now click the map to set the end point (or right-click).'
+      : 'Ready — press “Auto generate guided route”.');
   }
 
   function openContextMenu(e) {
@@ -166,10 +169,7 @@ const CreateRoutePage = () => {
     const mk = (text, which) => {
       const b = document.createElement('button');
       b.textContent = text;
-      b.onclick = () => {
-        place(which, e.latlng);
-        map.current.closePopup();
-      };
+      b.onclick = () => { place(which, e.latlng); map.current.closePopup(); };
       return b;
     };
     div.appendChild(mk('Set as start (A)', 'start'));
@@ -179,12 +179,10 @@ const CreateRoutePage = () => {
 
   function clearGenerated() {
     if (wpLayer.current) wpLayer.current.clearLayers();
-    wpMarkers.current = {};
-    if (routeLine.current) {
-      map.current.removeLayer(routeLine.current);
-      routeLine.current = null;
-    }
-    draft.current = null;
+    if (routeLine.current) { map.current.removeLayer(routeLine.current); routeLine.current = null; }
+    meta.current = null;
+    setWaypoints([]);
+    setSelected(null);
     setCounts({ found: 0, skipped: 0 });
   }
 
@@ -193,10 +191,7 @@ const CreateRoutePage = () => {
     busy.current = false;
     clearGenerated();
     [startMarker, endMarker].forEach(r => {
-      if (r.current) {
-        map.current.removeLayer(r.current);
-        r.current = null;
-      }
+      if (r.current) { map.current.removeLayer(r.current); r.current = null; }
     });
     setStart(null);
     setEnd(null);
@@ -204,77 +199,34 @@ const CreateRoutePage = () => {
     setStatus('Click the map to set the start point (or right-click).');
   }
 
-  function popupHtml(wp) {
-    return `<div style="width:260px;position:relative">
-      <img src="${wp.mediaUrl}" style="width:100%;border-radius:6px;display:block" alt="guidance" />
-      <button class="xtp-nav xtp-nav-l" data-nav="prev" title="Previous point">‹</button>
-      <button class="xtp-nav xtp-nav-r" data-nav="next" title="Next point">›</button>
-      <div style="font-size:11px;color:#666;margin:5px 0">${wp.caption || ''}</div>
-      <button data-regen="1" style="font-size:12px;padding:4px 9px;cursor:pointer;border:1px solid #c7ccd4;border-radius:6px;background:#fff">↻ Try another photo (this spot)</button>
-    </div>`;
-  }
-
-  function bindPopup(ev, position) {
-    const el = ev.popup.getElement();
-    const regen = el.querySelector('button[data-regen]');
-    if (regen) regen.onclick = () => regenerate(position);
-    const prev = el.querySelector('button[data-nav="prev"]');
-    const next = el.querySelector('button[data-nav="next"]');
-    const go = pos => {
-      const m = wpMarkers.current[pos];
-      if (m) m.openPopup();
-    };
-    if (prev) {
-      if (wpMarkers.current[position - 1]) prev.onclick = () => go(position - 1);
-      else prev.disabled = true;
-    }
-    if (next) {
-      if (wpMarkers.current[position + 1]) next.onclick = () => go(position + 1);
-      else next.disabled = true;
-    }
-  }
-
-  function addWaypointMarker(wp) {
+  function addMarker(wp) {
     const Lm = L.current;
-    const html = `<div style="background:#1455c0;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.4)">${wp.position + 1}</div>`;
+    const color = wp.kind === 'start' ? '#1c7c2f' : wp.kind === 'destination' ? '#b0271f' : '#1455c0';
+    const html = `<div style="background:${color};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.4)">${wp.position + 1}</div>`;
     const marker = Lm.marker([wp.lat, wp.lon], {
       icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [24, 24], iconAnchor: [12, 12] }),
     });
-    marker.bindPopup(popupHtml(wp), { minWidth: 270 });
-    marker.on('popupopen', ev => bindPopup(ev, wp.position));
+    marker.on('click', () => setSelected(wp.position));
     marker.addTo(wpLayer.current);
-    wpMarkers.current[wp.position] = marker;
   }
 
   async function regenerate(position) {
-    const d = draft.current;
-    if (!d) return;
-    const wp = d.waypoints.find(w => w.position === position);
-    if (!wp) return;
+    const wp = waypoints.find(w => w.position === position);
+    if (!wp || !meta.current) return;
     try {
       const r = await fetch(IMAGE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hash: d.hash,
-          position,
-          camLat: wp.camLat,
-          camLon: wp.camLon,
-          heading: wp.heading,
-          turnAngle: wp.turnAngle,
-          excludeId: wp.imageId,
+          hash: meta.current.hash, position,
+          camLat: wp.camLat, camLon: wp.camLon, heading: wp.heading,
+          turnAngle: wp.turnAngle, excludeId: wp.imageId,
         }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const img = await r.json();
-      wp.mediaUrl = img.mediaUrl;
-      wp.caption = img.caption;
-      wp.imageId = img.imageId;
-      const marker = wpMarkers.current[position];
-      if (marker) {
-        marker.setPopupContent(popupHtml(wp));
-        marker.openPopup();
-      }
+      setWaypoints(ws => ws.map(w => (w.position === position
+        ? { ...w, mediaUrl: img.mediaUrl, caption: img.caption, imageId: img.imageId } : w)));
     } catch (err) {
       setStatus(`Could not fetch another image: ${err.message}`);
     }
@@ -286,8 +238,7 @@ const CreateRoutePage = () => {
     busy.current = true;
     setPhase('generating');
     setStatus('Generating route…');
-    const q = `flat=${start.lat}&flon=${start.lon}&tlat=${end.lat}&tlon=${end.lon}`;
-    const source = new EventSource(`${GENERATE_URL}?${q}`);
+    const source = new EventSource(`${GENERATE_URL}?flat=${start.lat}&flon=${start.lon}&tlat=${end.lat}&tlon=${end.lon}`);
     es.current = source;
     let found = 0;
     let skipped = 0;
@@ -300,42 +251,35 @@ const CreateRoutePage = () => {
       map.current.fitBounds(routeLine.current.getBounds(), { padding: [50, 50] });
     });
     source.addEventListener('waypoint', e => {
-      addWaypointMarker(JSON.parse(e.data));
+      const wp = JSON.parse(e.data);
+      addMarker(wp);
+      setWaypoints(ws => [...ws, wp]);
       found += 1;
       setCounts({ found, skipped });
-      setStatus('Generating route…');
     });
-    source.addEventListener('skip', () => {
-      skipped += 1;
-      setCounts({ found, skipped });
-    });
+    source.addEventListener('skip', () => { skipped += 1; setCounts({ found, skipped }); });
     source.addEventListener('done', e => {
-      draft.current = JSON.parse(e.data);
+      meta.current = JSON.parse(e.data);
+      setWaypoints(meta.current.waypoints);
       busy.current = false;
       source.close();
       setPhase('preview');
-      setStatus(`Done — ${found} turn photos${skipped ? `, ${skipped} skipped` : ''}. Click a point to review, then Accept or Reject.`);
+      setStatus(`Done — ${found} photos${skipped ? `, ${skipped} skipped` : ''}. Click a point to review, then Accept or Reject.`);
     });
     source.addEventListener('failed', e => {
-      busy.current = false;
-      source.close();
-      setPhase('idle');
+      busy.current = false; source.close(); setPhase('idle');
       let msg = 'generation failed';
       try { msg = JSON.parse(e.data).message; } catch (x) { /* ignore */ }
       setStatus(`Generation failed: ${msg}`);
     });
     source.onerror = () => {
       source.close();
-      if (!draft.current) {
-        busy.current = false;
-        setPhase('idle');
-        setStatus('Connection to the generator was lost.');
-      }
+      if (!meta.current) { busy.current = false; setPhase('idle'); setStatus('Connection to the generator was lost.'); }
     };
   }
 
   async function accept() {
-    if (!draft.current) return;
+    if (!meta.current) return;
     busy.current = true;
     setPhase('saving');
     setStatus('Saving route…');
@@ -343,32 +287,55 @@ const CreateRoutePage = () => {
       const r = await fetch(SAVE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(draft.current),
+        body: JSON.stringify({ ...meta.current, waypoints }),
       });
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
-      busy.current = false;
-      setPhase('saved');
-      setStatus(`Saved ✓ route #${data.routeId} with ${data.waypoints} turn photos.`);
+      busy.current = false; setPhase('saved');
+      setStatus(`Saved ✓ route #${data.routeId} with ${data.waypoints} photos.`);
     } catch (err) {
-      busy.current = false;
-      setPhase('preview');
+      busy.current = false; setPhase('preview');
       setStatus(`Save failed: ${err.message}`);
     }
   }
 
   const generating = phase === 'generating';
   const genDisabled = !start || !end || generating || phase === 'saving';
+  const sel = selected != null ? waypoints.find(w => w.position === selected) : null;
+  const label = sel
+    ? sel.kind === 'start' ? 'Start — head this way'
+      : sel.kind === 'destination' ? 'Destination'
+        : `Turn ${sel.position}`
+    : '';
+  const hasPrev = sel && waypoints.some(w => w.position === sel.position - 1);
+  const hasNext = sel && waypoints.some(w => w.position === sel.position + 1);
 
   return (
     <div className="xtp-wrap">
       <style>{STYLE}</style>
       <div ref={mapEl} className="xtp-map" />
+
+      {sel && (
+        <div className="xtp-card">
+          <div className="xtp-card-imgwrap">
+            <img src={sel.mediaUrl} alt="guidance" />
+            <button type="button" className="xtp-card-close" onClick={() => setSelected(null)}>×</button>
+            <button type="button" className="xtp-nav xtp-nav-l" disabled={!hasPrev} onClick={() => setSelected(sel.position - 1)}>‹</button>
+            <button type="button" className="xtp-nav xtp-nav-r" disabled={!hasNext} onClick={() => setSelected(sel.position + 1)}>›</button>
+          </div>
+          <div className="xtp-card-meta">
+            <div className="lbl">{label} <span style={{ color: '#aab2c0', fontWeight: 400 }}>({sel.position + 1}/{waypoints.length})</span></div>
+            <div className="cap">{sel.caption}</div>
+            <button type="button" className="again" onClick={() => regenerate(sel.position)}>↻ Try another photo (this spot)</button>
+          </div>
+        </div>
+      )}
+
       <div className="xtp-panel">
         <h2>Create guided route</h2>
         <div className="hint">
           Click the map to set the start, then the end (or right-click for either); drag to adjust.
-          Generate adds a photo with a turn arrow at each junction.
+          Generate adds a “head this way” photo at the start, a turn arrow at each junction, and the destination.
         </div>
         <div className="xtp-row">
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
