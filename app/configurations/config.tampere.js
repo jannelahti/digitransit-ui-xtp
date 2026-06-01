@@ -51,10 +51,12 @@ export default configMerger(walttiConfig, {
 
   title: APP_TITLE,
 
-  // XTP demo: show the title text ("XTP") in the app bar instead of the Nysse
-  // logo image. LogoSmall renders the title as text when textLogo is true and
-  // no `logo` is set. Removing `logo` drops the "N reittiopas" branding.
+  // XTP demo: show the title text ("XTP") in the app bar instead of any logo
+  // image. TopLevel only loads a logo when config.logo is truthy, and LogoSmall
+  // renders the title text when textLogo is true and no logo is set. We blank
+  // logo to override the inherited default (digitransit-logo.png).
   textLogo: true,
+  logo: '',
 
   favicon: './app/configurations/images/tampere/tampere-favicon.png',
 
