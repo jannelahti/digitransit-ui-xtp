@@ -150,6 +150,14 @@ export default config => {
 
   return (
     <Route Component={TopLevel}>
+      <Route
+        path="/luo-opastettu-reitti"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "createroute" */ './component/xtp/CreateRoutePage'
+          ).then(getDefault)
+        }
+      />
       {getStopRoutes()}
       {getStopRoutes(true) /* terminals */}
       {routeRoutes(config)}
