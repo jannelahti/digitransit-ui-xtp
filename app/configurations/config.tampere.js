@@ -6,7 +6,7 @@ import ttConfig from './timetableConfigUtils';
 
 const tampereTimetables = ttConfig.tampere;
 const CONFIG = 'tampere';
-const APP_TITLE = 'Nyssen reittiopas';
+const APP_TITLE = 'XTP';
 const APP_DESCRIPTION = 'Nyssen reittiopas';
 const CDN_URL = process.env.MAP_URL || 'https://dev-cdn.digitransit.fi';
 
@@ -51,8 +51,10 @@ export default configMerger(walttiConfig, {
 
   title: APP_TITLE,
 
-  // Navbar logo
-  logo: 'tampere/tampere-logo.png',
+  // XTP demo: show the title text ("XTP") in the app bar instead of the Nysse
+  // logo image. LogoSmall renders the title as text when textLogo is true and
+  // no `logo` is set. Removing `logo` drops the "N reittiopas" branding.
+  textLogo: true,
 
   favicon: './app/configurations/images/tampere/tampere-favicon.png',
 
