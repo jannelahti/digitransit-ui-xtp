@@ -265,8 +265,21 @@ const CreateRoutePage = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 64px)' }}>
-      <div style={{ padding: '10px 14px', background: '#f5f5f5', borderBottom: '1px solid #ddd' }}>
+    <div style={{ position: 'relative', height: 'calc(100vh - 64px)' }}>
+      <div ref={mapEl} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }} />
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 2000,
+          background: 'rgba(245,245,245,0.97)',
+          borderTop: '1px solid #ccc',
+          padding: '10px 14px',
+          boxShadow: '0 -2px 10px rgba(0,0,0,.18)',
+        }}
+      >
         <div style={{ fontWeight: 700, marginBottom: 6 }}>Create guided route</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
@@ -294,7 +307,6 @@ const CreateRoutePage = () => {
           </span>
         </div>
       </div>
-      <div ref={mapEl} style={{ flex: 1, minHeight: '60vh' }} />
     </div>
   );
 };
