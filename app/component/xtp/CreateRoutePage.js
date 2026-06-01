@@ -3,8 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 /*
  * XTP "Create guided route" editor (plan: docs/plans/guided-route-creator.md).
  * Self-contained (Option B): plain Leaflet (dynamic-imported, SSR-safe), crisp
- * Carto retina tiles, EventSource stream. Talks to the route-generator sidecar
- * via the nginx-proxied paths below (VTT-only).
+ * Carto Voyager retina tiles, EventSource stream. Talks to the route-generator
+ * sidecar via the nginx-proxied paths below (VTT-only).
  */
 const GENERATE_URL = '/api/generate';
 const SAVE_URL = '/api/save';
@@ -41,11 +41,10 @@ function decodePolyline(str) {
 const STYLE = `
 .xtp-wrap { position: relative; height: calc(100vh - 64px); }
 .xtp-map { position: absolute; inset: 0; }
-.xtp-map.placing { cursor: crosshair; }
 .xtp-panel {
   position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 2000;
   background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,.22);
-  padding: 14px 16px; font-family: inherit;
+  padding: 14px 16px;
 }
 .xtp-panel h2 { margin: 0 0 4px; font-size: 16px; }
 .xtp-panel .hint { color: #5a6270; font-size: 13px; margin-bottom: 10px; }
@@ -54,19 +53,29 @@ const STYLE = `
 .xtp-btn {
   border: 1px solid #c7ccd4; background: #fff; color: #1c2430; border-radius: 8px;
   padding: 8px 14px; font-size: 14px; font-weight: 600; cursor: pointer;
-  transition: background .15s, border-color .15s, box-shadow .15s;
+  transition: background .15s, border-color .15s;
 }
 .xtp-btn:hover:not(:disabled) { background: #f1f3f6; }
 .xtp-btn:disabled { opacity: .45; cursor: default; }
-.xtp-btn.active { border-color: #1455c0; box-shadow: 0 0 0 2px rgba(20,85,192,.2); }
 .xtp-btn.primary { background: #1455c0; border-color: #1455c0; color: #fff; }
 .xtp-btn.primary:hover:not(:disabled) { background: #0e459f; }
 .xtp-btn.success { background: #1c7c2f; border-color: #1c7c2f; color: #fff; }
 .xtp-btn.success:hover:not(:disabled) { background: #166626; }
-.xtp-status { font-size: 13px; color: #333; min-height: 18px; }
-.xtp-ctx { display: flex; flex-direction: column; gap: 6px; }
+.xtp-status { font-size: 13px; color: #333; min-height: 18px; display:flex; align-items:center; gap:8px; }
+.xtp-spin { width:16px; height:16px; border:3px solid #c7d3ea; border-top-color:#1455c0; border-radius:50%; animation: xtpspin .8s linear infinite; }
+@keyframes xtpspin { to { transform: rotate(360deg); } }
+.xtp-ctx { display:flex; flex-direction:column; gap:6px; }
 .xtp-ctx button { border:1px solid #c7ccd4; background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px; }
 .xtp-ctx button:hover { background:#f1f3f6; }
+.xtp-nav {
+  position:absolute; top:84px; transform:translateY(-50%); z-index:5;
+  width:30px; height:30px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.55); color:#fff; font-size:20px; line-height:28px; text-align:center;
+}
+.xtp-nav:hover { background:rgba(0,0,0,.78); }
+.xtp-nav:disabled { opacity:.25; cursor:default; }
+.xtp-nav-l { left:6px; }
+.xtp-nav-r { right:6px; }
 `;
 
 const CreateRoutePage = () => {
@@ -81,21 +90,12 @@ const CreateRoutePage = () => {
   const draft = useRef(null);
   const wpMarkers = useRef({});
   const busy = useRef(false);
-  const modeRef = useRef(null); // 'start' | 'end' | null (avoids stale closures)
 
   const [start, setStart] = useState(null);
   const [end, setEnd] = useState(null);
-  const [mode, setModeState] = useState(null);
   const [phase, setPhase] = useState('idle');
-  const [status, setStatus] = useState('Set a start and end point, then generate.');
+  const [status, setStatus] = useState('Click the map to set the start point (or right-click).');
   const [counts, setCounts] = useState({ found: 0, skipped: 0 });
-
-  const setMode = m => {
-    modeRef.current = m;
-    setModeState(m);
-    if (mapEl.current) mapEl.current.classList.toggle('placing', !!m);
-    if (m) setStatus(`Click the map to place the ${m === 'start' ? 'START (A)' : 'END (B)'} point — or right-click anywhere.`);
-  };
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +104,7 @@ const CreateRoutePage = () => {
       const Lm = mod.default || mod;
       L.current = Lm;
       const m = Lm.map(mapEl.current, { zoomControl: true }).setView([61.4978, 23.761], 15);
-      Lm.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      Lm.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         subdomains: 'abcd',
         maxZoom: 20,
         detectRetina: true,
@@ -112,9 +112,9 @@ const CreateRoutePage = () => {
       }).addTo(m);
       wpLayer.current = Lm.layerGroup().addTo(m);
       m.on('click', e => {
-        if (busy.current || !modeRef.current) return;
-        place(modeRef.current, e.latlng);
-        setMode(null);
+        if (busy.current) return;
+        if (!startMarker.current) place('start', e.latlng);
+        else if (!endMarker.current) place('end', e.latlng);
       });
       m.on('contextmenu', openContextMenu);
       map.current = m;
@@ -138,7 +138,6 @@ const CreateRoutePage = () => {
     const Lm = L.current;
     const ref = which === 'start' ? startMarker : endMarker;
     const setter = which === 'start' ? setStart : setEnd;
-    const coords = { lat: latlng.lat, lon: latlng.lng };
     if (ref.current) {
       ref.current.setLatLng(latlng);
     } else {
@@ -151,8 +150,12 @@ const CreateRoutePage = () => {
         setter({ lat: ll.lat, lon: ll.lng });
       });
     }
-    setter(coords);
-    setStatus('Ready — press “Auto generate guided route”.');
+    setter({ lat: latlng.lat, lon: latlng.lng });
+    if (which === 'start' && !endMarker.current) {
+      setStatus('Now click the map to set the end point (or right-click).');
+    } else {
+      setStatus('Ready — press “Auto generate guided route”.');
+    }
   }
 
   function openContextMenu(e) {
@@ -188,7 +191,6 @@ const CreateRoutePage = () => {
   function resetAll() {
     if (es.current) es.current.close();
     busy.current = false;
-    setMode(null);
     clearGenerated();
     [startMarker, endMarker].forEach(r => {
       if (r.current) {
@@ -199,20 +201,37 @@ const CreateRoutePage = () => {
     setStart(null);
     setEnd(null);
     setPhase('idle');
-    setStatus('Set a start and end point, then generate.');
+    setStatus('Click the map to set the start point (or right-click).');
   }
 
   function popupHtml(wp) {
-    return `<div style="width:240px">
+    return `<div style="width:260px;position:relative">
       <img src="${wp.mediaUrl}" style="width:100%;border-radius:6px;display:block" alt="guidance" />
+      <button class="xtp-nav xtp-nav-l" data-nav="prev" title="Previous point">‹</button>
+      <button class="xtp-nav xtp-nav-r" data-nav="next" title="Next point">›</button>
       <div style="font-size:11px;color:#666;margin:5px 0">${wp.caption || ''}</div>
-      <button data-regen="${wp.position}" style="font-size:12px;padding:4px 9px;cursor:pointer;border:1px solid #c7ccd4;border-radius:6px;background:#fff">↻ Next image</button>
+      <button data-regen="1" style="font-size:12px;padding:4px 9px;cursor:pointer;border:1px solid #c7ccd4;border-radius:6px;background:#fff">↻ Try another photo (this spot)</button>
     </div>`;
   }
 
-  function bindRegen(ev, position) {
-    const btn = ev.popup.getElement().querySelector(`button[data-regen="${position}"]`);
-    if (btn) btn.onclick = () => regenerate(position);
+  function bindPopup(ev, position) {
+    const el = ev.popup.getElement();
+    const regen = el.querySelector('button[data-regen]');
+    if (regen) regen.onclick = () => regenerate(position);
+    const prev = el.querySelector('button[data-nav="prev"]');
+    const next = el.querySelector('button[data-nav="next"]');
+    const go = pos => {
+      const m = wpMarkers.current[pos];
+      if (m) m.openPopup();
+    };
+    if (prev) {
+      if (wpMarkers.current[position - 1]) prev.onclick = () => go(position - 1);
+      else prev.disabled = true;
+    }
+    if (next) {
+      if (wpMarkers.current[position + 1]) next.onclick = () => go(position + 1);
+      else next.disabled = true;
+    }
   }
 
   function addWaypointMarker(wp) {
@@ -221,8 +240,8 @@ const CreateRoutePage = () => {
     const marker = Lm.marker([wp.lat, wp.lon], {
       icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [24, 24], iconAnchor: [12, 12] }),
     });
-    marker.bindPopup(popupHtml(wp), { minWidth: 250 });
-    marker.on('popupopen', ev => bindRegen(ev, wp.position));
+    marker.bindPopup(popupHtml(wp), { minWidth: 270 });
+    marker.on('popupopen', ev => bindPopup(ev, wp.position));
     marker.addTo(wpLayer.current);
     wpMarkers.current[wp.position] = marker;
   }
@@ -236,12 +255,21 @@ const CreateRoutePage = () => {
       const r = await fetch(IMAGE_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hash: d.hash, position, lat: wp.lat, lon: wp.lon, heading: wp.heading, turn: wp.turn }),
+        body: JSON.stringify({
+          hash: d.hash,
+          position,
+          camLat: wp.camLat,
+          camLon: wp.camLon,
+          heading: wp.heading,
+          turnAngle: wp.turnAngle,
+          excludeId: wp.imageId,
+        }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const img = await r.json();
       wp.mediaUrl = img.mediaUrl;
       wp.caption = img.caption;
+      wp.imageId = img.imageId;
       const marker = wpMarkers.current[position];
       if (marker) {
         marker.setPopupContent(popupHtml(wp));
@@ -256,9 +284,8 @@ const CreateRoutePage = () => {
     if (!start || !end) return;
     clearGenerated();
     busy.current = true;
-    setMode(null);
     setPhase('generating');
-    setStatus('Generating… routing and finding images.');
+    setStatus('Generating route…');
     const q = `flat=${start.lat}&flon=${start.lon}&tlat=${end.lat}&tlon=${end.lon}`;
     const source = new EventSource(`${GENERATE_URL}?${q}`);
     es.current = source;
@@ -276,7 +303,7 @@ const CreateRoutePage = () => {
       addWaypointMarker(JSON.parse(e.data));
       found += 1;
       setCounts({ found, skipped });
-      setStatus(`Generating… ${found} photo points so far.`);
+      setStatus('Generating route…');
     });
     source.addEventListener('skip', () => {
       skipped += 1;
@@ -287,7 +314,7 @@ const CreateRoutePage = () => {
       busy.current = false;
       source.close();
       setPhase('preview');
-      setStatus(`Done — ${found} photo points${skipped ? `, ${skipped} skipped` : ''}. Click a point to review, then Accept or Reject.`);
+      setStatus(`Done — ${found} turn photos${skipped ? `, ${skipped} skipped` : ''}. Click a point to review, then Accept or Reject.`);
     });
     source.addEventListener('failed', e => {
       busy.current = false;
@@ -322,7 +349,7 @@ const CreateRoutePage = () => {
       if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
       busy.current = false;
       setPhase('saved');
-      setStatus(`Saved ✓ route #${data.routeId} with ${data.waypoints} photo points.`);
+      setStatus(`Saved ✓ route #${data.routeId} with ${data.waypoints} turn photos.`);
     } catch (err) {
       busy.current = false;
       setPhase('preview');
@@ -330,7 +357,8 @@ const CreateRoutePage = () => {
     }
   }
 
-  const genDisabled = !start || !end || phase === 'generating' || phase === 'saving';
+  const generating = phase === 'generating';
+  const genDisabled = !start || !end || generating || phase === 'saving';
 
   return (
     <div className="xtp-wrap">
@@ -339,26 +367,10 @@ const CreateRoutePage = () => {
       <div className="xtp-panel">
         <h2>Create guided route</h2>
         <div className="hint">
-          Place a start and end point (use the buttons, or right-click the map), then generate.
-          A photo with a directional arrow is added at each turn.
+          Click the map to set the start, then the end (or right-click for either); drag to adjust.
+          Generate adds a photo with a turn arrow at each junction.
         </div>
         <div className="xtp-row">
-          <button
-            type="button"
-            className={`xtp-btn${mode === 'start' ? ' active' : ''}`}
-            onClick={() => setMode(mode === 'start' ? null : 'start')}
-            disabled={phase === 'generating' || phase === 'saving'}
-          >
-            {start ? '✓ ' : ''}Set start (A)
-          </button>
-          <button
-            type="button"
-            className={`xtp-btn${mode === 'end' ? ' active' : ''}`}
-            onClick={() => setMode(mode === 'end' ? null : 'end')}
-            disabled={phase === 'generating' || phase === 'saving'}
-          >
-            {end ? '✓ ' : ''}Set end (B)
-          </button>
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
             Auto generate guided route
           </button>
@@ -366,18 +378,16 @@ const CreateRoutePage = () => {
           <button type="button" className="xtp-btn success" onClick={accept} disabled={phase !== 'preview'}>
             Accept &amp; save
           </button>
-          <button
-            type="button"
-            className="xtp-btn"
-            onClick={resetAll}
-            disabled={phase === 'generating' || phase === 'saving'}
-          >
+          <button type="button" className="xtp-btn" onClick={resetAll} disabled={generating || phase === 'saving'}>
             Reject / reset
           </button>
         </div>
         <div className="xtp-status" style={{ marginTop: 8 }}>
-          {status}
-          {counts.found ? ` (${counts.found} points${counts.skipped ? `, ${counts.skipped} skipped` : ''})` : ''}
+          {generating && <span className="xtp-spin" />}
+          <span>
+            {status}
+            {counts.found ? ` (${counts.found}${counts.skipped ? `, ${counts.skipped} skipped` : ''})` : ''}
+          </span>
         </div>
       </div>
     </div>
