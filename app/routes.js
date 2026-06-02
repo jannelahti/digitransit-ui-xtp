@@ -158,6 +158,31 @@ export default config => {
           ).then(getDefault)
         }
       />
+      {/* Track B — live Street View routes (plan §13) */}
+      <Route
+        path="/luo-live-reitti"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "livecreateroute" */ './component/xtp/LiveCreateRoutePage'
+          ).then(getDefault)
+        }
+      />
+      <Route
+        path="/live-reitit"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "liveroutes" */ './component/xtp/LiveRoutesPage'
+          ).then(getDefault)
+        }
+      />
+      <Route
+        path="/live-reitti/:id"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "liveguide" */ './component/xtp/LiveGuidePage'
+          ).then(getDefault)
+        }
+      />
       {getStopRoutes()}
       {getStopRoutes(true) /* terminals */}
       {routeRoutes(config)}
