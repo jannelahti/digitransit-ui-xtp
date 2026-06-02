@@ -328,7 +328,9 @@ export function transitEdges(edges) {
     return [];
   }
   return edges.filter(
-    edge => !edge.node.legs.every(leg => STREET_LEG_MODES.includes(leg.mode)),
+    edge =>
+      edge?.node?.legs &&
+      !edge.node.legs.every(leg => STREET_LEG_MODES.includes(leg.mode)),
   );
 }
 
