@@ -51,17 +51,24 @@ const LiveGuideSheet = ({ matches, position }) => {
   const [svKey, setSvKey] = useState('');
   const [step, setStep] = useState(0);
   const [auto, setAuto] = useState(true);
+  // Dev-only GPS simulation (gated behind ?simgps in the URL) — feeds a fake
+  // position through the real auto-advance logic, for testing where browser
+  // location is unavailable (e.g. blocked by org policy).
+  const simEnabled =
+    typeof window !== 'undefined' && /[?&]simgps/.test(window.location.search);
+  const [simPos, setSimPos] = useState(null);
+  const effPos = simPos || position;
 
   useEffect(() => { getStreetViewKey().then(setSvKey); }, []);
 
   // GPS auto-advance: when walking within range of the next waypoint, step on.
   useEffect(() => {
-    if (!auto || !position || (position.lat === 0 && position.lon === 0)) return;
+    if (!auto || !effPos || (effPos.lat === 0 && effPos.lon === 0)) return;
     const next = steps[step + 1];
-    if (next && distanceMeters(position, { lat: next.wp.lat, lon: next.wp.lon }) < ADVANCE_RANGE_M) {
+    if (next && distanceMeters(effPos, { lat: next.wp.lat, lon: next.wp.lon }) < ADVANCE_RANGE_M) {
       setStep(step + 1);
     }
-  }, [position, auto, step, steps]);
+  }, [effPos, auto, step, steps]);
 
   if (steps.length === 0) return null;
   const safeStep = Math.min(step, steps.length - 1);
@@ -98,6 +105,20 @@ const LiveGuideSheet = ({ matches, position }) => {
           >
             {auto ? 'Auto' : 'Manual'}
           </button>
+          {simEnabled && (
+            <button
+              type="button"
+              className="xtp-guide-auto off"
+              title="Simulate GPS: jump to the next waypoint (tests auto-advance)"
+              disabled={safeStep >= steps.length - 1}
+              onClick={() => {
+                const next = steps[safeStep + 1];
+                if (next) { setAuto(true); setSimPos({ lat: next.wp.lat, lon: next.wp.lon }); }
+              }}
+            >
+              Sim▷
+            </button>
+          )}
         </div>
       </div>
     </div>
