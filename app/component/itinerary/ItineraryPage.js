@@ -1370,6 +1370,22 @@ export default function ItineraryPage(props, context) {
     makeLiveGuideQuery();
     // console.log('makeXTPInfoQuery DONE!');
   }, [state.plan]); // dependency array, if any of these change => we must trigger this useEffect action.
+
+  // When a guided leg is matched in the detail view, zoom the map to that walking
+  // leg's waypoints (reuses the focusToLeg bounds pattern) so the route is clear.
+  useEffect(() => {
+    if (!detailView || liveGuideState.length === 0) {
+      return;
+    }
+    const pts = liveGuideState
+      .flatMap(info => (info.route?.waypoints || []).map(wp => [wp.lat, wp.lon]))
+      .filter(a => a[0] && a[1]);
+    if (pts.length === 0) {
+      return;
+    }
+    setMapState({ bounds: boundWithMinimumArea(pts), center: undefined, zoom: undefined });
+    setTimeout(() => mwtRef.current?.map?.updateZoom(), 1);
+  }, [liveGuideState, detailView]); // eslint-disable-line react-hooks/exhaustive-deps
   
   // merge two separate bike + transit plans into one
   useEffect(() => {
