@@ -1846,6 +1846,7 @@ export default function ItineraryPage(props, context) {
           plan={plan}
           planEdges={combinedEdges}
           xtpPoints={xtpPoints}
+          hideArrows={liveGuideState.length > 0}
           focusToPoint={focusToPoint}
           focusToLeg={focusToLeg}
           carEmissions={carEmissions}

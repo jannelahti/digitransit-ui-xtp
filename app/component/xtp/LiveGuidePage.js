@@ -30,6 +30,8 @@ const STYLE = `
   padding:6px 14px 6px 11px; font-size:14px; font-weight:600; color:#1c2430; cursor:pointer; }
 .xtp-gback:hover{ background:#f1f3f6; }
 .xtp-gloading{ padding:40px; text-align:center; color:#5a6270; }
+/* keep the photo compact so the route on the map stays visible behind it */
+.xtp-gcard .xtp-sv img { max-height:34vh; object-fit:cover; }
 ${LIVE_STYLE}
 `;
 

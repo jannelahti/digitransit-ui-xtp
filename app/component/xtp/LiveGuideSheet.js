@@ -36,6 +36,8 @@ const STYLE = `
   font-weight:700; cursor:pointer; }
 .xtp-guide-auto.on { background:#1c7c2f; border-color:#1c7c2f; color:#fff; }
 .xtp-guide-auto.off { background:#1b212b; color:#aab2c0; }
+/* keep the frame compact so the map stays large above the sheet */
+.xtp-guide-inner .xtp-sv img { max-height:34vh; object-fit:cover; }
 ${LIVE_STYLE}
 `;
 
