@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Link } from 'found';
 import LiveArrowImage from './LiveArrowImage';
 import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel } from './liveRoute';
@@ -50,7 +51,7 @@ const STYLE = `
 ${LIVE_STYLE}
 `;
 
-const LiveCreateRoutePage = () => {
+const LiveCreateRoutePage = ({ router }) => {
   const mapEl = useRef(null);
   const L = useRef(null);
   const map = useRef(null);
@@ -207,6 +208,11 @@ const LiveCreateRoutePage = () => {
     source.addEventListener('done', e => {
       meta.current = JSON.parse(e.data);
       setWaypoints(meta.current.waypoints);
+      // Drop the A/B endpoint pins — the numbered start/destination waypoint
+      // markers now sit on top of them and are otherwise unclickable.
+      [startMarker, endMarker].forEach(r => {
+        if (r.current) { map.current.removeLayer(r.current); r.current = null; }
+      });
       busy.current = false;
       source.close();
       setPhase('preview');
@@ -238,7 +244,10 @@ const LiveCreateRoutePage = () => {
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
       busy.current = false; setPhase('saved');
-      setStatus(`Saved ✓ live route ${data.id} with ${data.waypoints} points.`);
+      setStatus(`Saved ✓ live route ${data.id} — returning to editor…`);
+      // Return to the cockpit, which reloads the catalog and shows the new route.
+      if (router && typeof router.push === 'function') router.push('/v2/route-editor');
+      else window.location.assign('/v2/route-editor');
     } catch (err) {
       busy.current = false; setPhase('preview');
       setStatus(`Save failed: ${err.message}`);
@@ -297,6 +306,14 @@ const LiveCreateRoutePage = () => {
       </div>
     </div>
   );
+};
+
+LiveCreateRoutePage.propTypes = {
+  router: PropTypes.shape({ push: PropTypes.func }),
+};
+
+LiveCreateRoutePage.defaultProps = {
+  router: undefined,
 };
 
 export default LiveCreateRoutePage;
