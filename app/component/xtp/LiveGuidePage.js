@@ -25,12 +25,20 @@ const STYLE = `
 .xtp-gtitle{ position:fixed; top:76px; left:50%; transform:translateX(-50%); z-index:2000;
   background:#fff; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 16px;
   font-size:14px; font-weight:600; color:#1c2430; max-width:calc(100vw - 32px); }
+.xtp-gback{ position:fixed; top:76px; left:16px; z-index:2001; display:flex; align-items:center; gap:4px;
+  background:#fff; border:none; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18);
+  padding:6px 14px 6px 11px; font-size:14px; font-weight:600; color:#1c2430; cursor:pointer; }
+.xtp-gback:hover{ background:#f1f3f6; }
 .xtp-gloading{ padding:40px; text-align:center; color:#5a6270; }
 ${LIVE_STYLE}
 `;
 
-const LiveGuidePage = ({ match }) => {
+const LiveGuidePage = ({ match, router }) => {
   const id = match?.params?.id;
+  const goBack = () => {
+    if (router && typeof router.go === 'function') router.go(-1);
+    else window.history.back();
+  };
   const mapEl = useRef(null);
   const L = useRef(null);
   const map = useRef(null);
@@ -106,6 +114,7 @@ const LiveGuidePage = ({ match }) => {
     <div className="xtp-wrap">
       <style>{STYLE}</style>
       <div ref={mapEl} className="xtp-map" />
+      <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
       <div className="xtp-gtitle">{route.name}</div>
 
       {wp && (
@@ -126,6 +135,11 @@ LiveGuidePage.propTypes = {
   match: PropTypes.shape({
     params: PropTypes.shape({ id: PropTypes.string }),
   }).isRequired,
+  router: PropTypes.shape({ go: PropTypes.func }),
+};
+
+LiveGuidePage.defaultProps = {
+  router: undefined,
 };
 
 export default LiveGuidePage;

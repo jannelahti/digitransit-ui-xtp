@@ -129,7 +129,7 @@ const LiveManagePage = () => {
           </div>
           <div className="acts">
             <Link className="xtp-act" to={`/live-reitti/${r.id}`}>Preview</Link>
-            <Link className="xtp-act" to={`/live-reitti/${r.id}/muokkaa`}>Edit</Link>
+            <Link className="xtp-act" to={`/edit-route/${r.id}`}>Edit</Link>
             <button
               type="button"
               className="xtp-act"

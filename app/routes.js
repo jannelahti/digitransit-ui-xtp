@@ -184,7 +184,7 @@ export default config => {
         }
       />
       <Route
-        path="/live-reitti/:id/muokkaa"
+        path="/edit-route/:id"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveedit" */ './component/xtp/LiveEditRoutePage'
