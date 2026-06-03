@@ -22,21 +22,27 @@ import {
 const STYLE = `
 .xtp-wrap { position: relative; height: calc(100vh - 64px); }
 .xtp-map { position: absolute; inset: 0; }
-.xtp-panel { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 2000;
-  background:#fff; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.22); padding:14px 16px; }
-.xtp-panel h2 { margin:0 0 8px; font-size:16px; }
+/* Left-anchored, transparent control panel so it doesn't block the map. The
+ * container has no background; the inputs/buttons carry their own, and the
+ * heading/hint get a white halo to stay legible over the map tiles. */
+.xtp-panel { position: fixed; left: 16px; bottom: 16px; z-index: 2000;
+  width: min(300px, calc(100vw - 32px)); background:transparent; box-shadow:none; padding:0; }
+.xtp-panel h2 { margin:0 0 8px; font-size:16px; color:#1c2430;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
 .xtp-name { width:100%; box-sizing:border-box; border:1px solid #c7ccd4; border-radius:8px;
-  padding:8px 10px; font-size:14px; margin-bottom:10px; }
+  padding:8px 10px; font-size:14px; margin-bottom:10px; box-shadow:0 1px 4px rgba(0,0,0,.18); }
 .xtp-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .xtp-spacer { flex:1; }
-.xtp-hint { color:#5a6270; font-size:12px; margin-bottom:10px; }
+.xtp-hint { color:#1c2430; font-size:12px; margin-bottom:10px;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
 .xtp-btn { border:1px solid #c7ccd4; background:#fff; color:#1c2430; border-radius:8px;
   padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; transition:background .15s; text-decoration:none; }
 .xtp-btn:hover:not(:disabled){ background:#f1f3f6; }
 .xtp-btn:disabled{ opacity:.45; cursor:default; }
 .xtp-btn.success{ background:#1c7c2f; border-color:#1c7c2f; color:#fff; }
 .xtp-btn.success:hover:not(:disabled){ background:#166626; }
-.xtp-status{ font-size:13px; color:#333; min-height:18px; margin-top:8px; }
+.xtp-status{ font-size:13px; color:#1c2430; min-height:18px; margin-top:8px;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
 .xtp-ctx{ display:flex; flex-direction:column; gap:6px; }
 .xtp-ctx button{ border:1px solid #c7ccd4; background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px; }
 .xtp-ctx button:hover{ background:#f1f3f6; }
