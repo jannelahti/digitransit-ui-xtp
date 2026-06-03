@@ -85,6 +85,8 @@ import {
   updateClient,
 } from './ItineraryPageUtils';
 import ItineraryTabs from './ItineraryTabs';
+import { LIVE } from '../xtp/liveRoute';
+import LiveGuideSheet from '../xtp/LiveGuideSheet';
 import { useItineraryContext } from './context/ItineraryContext';
 import { REDUCER_ACTION_TYPES } from './context/useItineraryReducer';
 import NaviContainer from './navigator/NaviContainer';
@@ -184,6 +186,8 @@ export default function ItineraryPage(props, context) {
   });
   const [weatherState, setWeatherState] = useState({ loading: false });
   const [xtpInfoState, setXTPInfoState] = useState([]);
+  // Street View guidance matched to the plan's walk legs (distinct from Track A).
+  const [liveGuideState, setLiveGuideState] = useState([]);
   
   const [topicsState, setTopicsState] = useState(null);
   const [mapState, setMapState] = useState({});
@@ -1316,9 +1320,54 @@ export default function ItineraryPage(props, context) {
     );
   }
   */
+  // Street View guidance (distinct pipeline): match the plan's WALK legs against
+  // active live routes and store the matches for the bottom-sheet guide.
+  async function makeLiveGuideQuery() {
+    const stateEdges = state.plan?.edges || [];
+    setLiveGuideState([]);
+    if (stateEdges.length === 0) {
+      return;
+    }
+    const edges = [];
+    stateEdges.forEach((edge, i) => {
+      const legs = [];
+      (edge?.node?.legs || []).forEach((leg, j) => {
+        if (leg.mode !== 'WALK' || !leg.from || !leg.to) {
+          return;
+        }
+        legs.push({
+          leg_index: j,
+          from: { lat: leg.from.lat.toString(), lon: leg.from.lon.toString() },
+          to: { lat: leg.to.lat.toString(), lon: leg.to.lon.toString() },
+        });
+      });
+      if (legs.length > 0) {
+        edges.push({ edge_index: i, legs });
+      }
+    });
+    if (edges.length === 0) {
+      return;
+    }
+    try {
+      const response = await fetch(LIVE.search, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ search_range: '200', edges }),
+      });
+      if (!response.ok) {
+        throw new Error(`Response status: ${response.status}`);
+      }
+      const resp = await response.json();
+      setLiveGuideState(resp.infos || []);
+    } catch (error) {
+      setLiveGuideState([]);
+    }
+  }
+
   useEffect(() => {
     // console.log('useEffect state.plan HAS CHANGED => makeXTPInfoQuery');
     makeXTPInfoQuery();
+    makeLiveGuideQuery();
     // console.log('makeXTPInfoQuery DONE!');
   }, [state.plan]); // dependency array, if any of these change => we must trigger this useEffect action.
   
@@ -1664,7 +1713,13 @@ export default function ItineraryPage(props, context) {
   const to = otpToLocation(params.to);
   const viaPoints = getIntermediatePlaces(query);
   const xtpPoints = xtpInfoState;
-  
+  // Street View guidance bottom sheet — shown in the detail/navigation view when
+  // the plan's walk legs matched stored routes (map stays visible behind it).
+  const guideSheet =
+    detailView && liveGuideState.length > 0 ? (
+      <LiveGuideSheet matches={liveGuideState} />
+    ) : null;
+
   // console.log(['Just before renderMap xtpPoints=',xtpPoints]);
 
   const hasItineraries = combinedEdges.length > 0;
@@ -1908,28 +1963,34 @@ export default function ItineraryPage(props, context) {
       detailView || altTransitHash.includes(hash) ? 'pop' : undefined;
 
     return (
-      <DesktopView
-        title={title}
-        header={header}
-        bckBtnFallback={bckBtnFallback}
-        content={content}
-        settingsDrawer={settingsDrawer}
-        map={map}
-        scrollable
-      />
+      <>
+        {guideSheet}
+        <DesktopView
+          title={title}
+          header={header}
+          bckBtnFallback={bckBtnFallback}
+          content={content}
+          settingsDrawer={settingsDrawer}
+          map={map}
+          scrollable
+        />
+      </>
     );
   }
 
   return (
-    <MobileView
-      header={header}
-      content={content}
-      settingsDrawer={settingsDrawer}
-      map={map}
-      ref={mobileRef}
-      match={match}
-      enableBottomScroll={!naviMode}
-    />
+    <>
+      {guideSheet}
+      <MobileView
+        header={header}
+        content={content}
+        settingsDrawer={settingsDrawer}
+        map={map}
+        ref={mobileRef}
+        match={match}
+        enableBottomScroll={!naviMode}
+      />
+    </>
   );
 }
 

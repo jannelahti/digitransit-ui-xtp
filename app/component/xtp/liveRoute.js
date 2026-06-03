@@ -11,6 +11,7 @@ export const LIVE = {
   catalog: '/api/live/catalog', // active only (tester list)
   catalogAll: '/api/live/catalog?all=1', // active + inactive (manage hub)
   config: '/api/live/config',
+  search: '/api/live/search', // POST plan legs → matching active routes (guidance)
   route: id => `/api/live/route/${id}`, // GET / PUT / DELETE by method
 };
 
@@ -31,6 +32,19 @@ export function bearing(a, b) {
 // Positive = right (matches the arrow convention in LiveArrowImage).
 export function signedTurn(inBearing, outBearing) {
   return ((outBearing - inBearing + 540) % 360) - 180;
+}
+
+// Great-circle distance between two {lat,lon} points, in metres. Used by the
+// guidance sheet's GPS auto-advance.
+export function distanceMeters(a, b) {
+  const R = 6371000;
+  const toRad = d => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLon = toRad(b.lon - a.lon);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
 }
 
 // Precision-5 google polyline -> [[lat, lon], ...]
