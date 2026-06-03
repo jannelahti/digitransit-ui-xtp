@@ -85,8 +85,6 @@ import {
   updateClient,
 } from './ItineraryPageUtils';
 import ItineraryTabs from './ItineraryTabs';
-import { LIVE, distanceMeters } from '../xtp/liveRoute';
-import LiveGuideSheet from '../xtp/LiveGuideSheet';
 import { useItineraryContext } from './context/ItineraryContext';
 import { REDUCER_ACTION_TYPES } from './context/useItineraryReducer';
 import NaviContainer from './navigator/NaviContainer';
@@ -145,8 +143,7 @@ export default function ItineraryPage(props, context) {
   const mobileRef = useRef();
   const ariaRef = useRef('summary-page.title');
   const mapLayerRef = useRef();
-  const simWalkRef = useRef(null); // dev ?simgps walk interval
-
+  
   const [state, setState] = useState({
     ...emptyState,
     loading: LOADSTATE.UNSET,
@@ -187,8 +184,6 @@ export default function ItineraryPage(props, context) {
   });
   const [weatherState, setWeatherState] = useState({ loading: false });
   const [xtpInfoState, setXTPInfoState] = useState([]);
-  // Street View guidance matched to the plan's walk legs (distinct from Track A).
-  const [liveGuideState, setLiveGuideState] = useState([]);
   
   const [topicsState, setTopicsState] = useState(null);
   const [mapState, setMapState] = useState({});
@@ -1321,127 +1316,11 @@ export default function ItineraryPage(props, context) {
     );
   }
   */
-  // Street View guidance (distinct pipeline): match the plan's WALK legs against
-  // active live routes and store the matches for the bottom-sheet guide.
-  async function makeLiveGuideQuery() {
-    const stateEdges = state.plan?.edges || [];
-    setLiveGuideState([]);
-    if (stateEdges.length === 0) {
-      return;
-    }
-    const edges = [];
-    stateEdges.forEach((edge, i) => {
-      const legs = [];
-      (edge?.node?.legs || []).forEach((leg, j) => {
-        if (leg.mode !== 'WALK' || !leg.from || !leg.to) {
-          return;
-        }
-        legs.push({
-          leg_index: j,
-          from: { lat: leg.from.lat.toString(), lon: leg.from.lon.toString() },
-          to: { lat: leg.to.lat.toString(), lon: leg.to.lon.toString() },
-        });
-      });
-      if (legs.length > 0) {
-        edges.push({ edge_index: i, legs });
-      }
-    });
-    if (edges.length === 0) {
-      return;
-    }
-    try {
-      const response = await fetch(LIVE.search, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ search_range: '200', edges }),
-      });
-      if (!response.ok) {
-        throw new Error(`Response status: ${response.status}`);
-      }
-      const resp = await response.json();
-      setLiveGuideState(resp.infos || []);
-    } catch (error) {
-      setLiveGuideState([]);
-    }
-  }
-
   useEffect(() => {
     // console.log('useEffect state.plan HAS CHANGED => makeXTPInfoQuery');
     makeXTPInfoQuery();
-    makeLiveGuideQuery();
     // console.log('makeXTPInfoQuery DONE!');
   }, [state.plan]); // dependency array, if any of these change => we must trigger this useEffect action.
-
-  // When a guided leg is matched in the detail view, zoom the map to that walking
-  // leg's waypoints (reuses the focusToLeg bounds pattern) so the route is clear.
-  useEffect(() => {
-    if (!detailView || liveGuideState.length === 0) {
-      return;
-    }
-    const pts = liveGuideState
-      .flatMap(info => (info.route?.waypoints || []).map(wp => [wp.lat, wp.lon]))
-      .filter(a => a[0] && a[1]);
-    if (pts.length === 0) {
-      return;
-    }
-    setMapState({ bounds: boundWithMinimumArea(pts), center: undefined, zoom: undefined });
-    setTimeout(() => mwtRef.current?.map?.updateZoom(), 1);
-  }, [liveGuideState, detailView]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Dev-only (?simgps): walk a simulated GPS position gradually along the matched
-  // route's waypoints, dispatching it into PositionStore so the map's location dot
-  // moves and the guidance auto-advance triggers as it nears each waypoint. Used
-  // to test/demo where real geolocation is unavailable (e.g. org-blocked).
-  const runSimWalk = () => {
-    if (simWalkRef.current) {
-      clearInterval(simWalkRef.current);
-      simWalkRef.current = null;
-      return; // second click stops the walk
-    }
-    const pts = liveGuideState
-      .flatMap(info => (info.route?.waypoints || []).map(wp => ({ lat: wp.lat, lon: wp.lon })))
-      .filter(p => p.lat && p.lon);
-    if (pts.length < 2) {
-      return;
-    }
-    const path = [];
-    for (let k = 0; k < pts.length - 1; k += 1) {
-      const a = pts[k];
-      const b = pts[k + 1];
-      const n = Math.max(1, Math.round(distanceMeters(a, b) / 5)); // ~5 m steps
-      for (let s = 0; s < n; s += 1) {
-        path.push({ lat: a.lat + ((b.lat - a.lat) * s) / n, lon: a.lon + ((b.lon - a.lon) * s) / n });
-      }
-    }
-    path.push(pts[pts.length - 1]);
-    let i = 0;
-    simWalkRef.current = setInterval(() => {
-      if (i >= path.length) {
-        clearInterval(simWalkRef.current);
-        simWalkRef.current = null;
-        return;
-      }
-      const p = path[i];
-      i += 1;
-      executeAction(actionContext =>
-        actionContext.dispatch('GeolocationFound', {
-          lat: p.lat,
-          lon: p.lon,
-          heading: null,
-          disableFiltering: true,
-        }),
-      );
-    }, 200);
-  };
-
-  useEffect(
-    () => () => {
-      if (simWalkRef.current) {
-        clearInterval(simWalkRef.current);
-      }
-    },
-    [],
-  );
   
   // merge two separate bike + transit plans into one
   useEffect(() => {
@@ -1785,19 +1664,7 @@ export default function ItineraryPage(props, context) {
   const to = otpToLocation(params.to);
   const viaPoints = getIntermediatePlaces(query);
   const xtpPoints = xtpInfoState;
-  // Street View guidance bottom sheet — shown in the detail/navigation view when
-  // the plan's walk legs matched stored routes (map stays visible behind it).
-  const simEnabled =
-    typeof window !== 'undefined' && /[?&]simgps/.test(window.location.search);
-  const guideSheet =
-    detailView && liveGuideState.length > 0 ? (
-      <LiveGuideSheet
-        matches={liveGuideState}
-        simEnabled={simEnabled}
-        onSimWalk={runSimWalk}
-      />
-    ) : null;
-
+  
   // console.log(['Just before renderMap xtpPoints=',xtpPoints]);
 
   const hasItineraries = combinedEdges.length > 0;
@@ -1924,7 +1791,6 @@ export default function ItineraryPage(props, context) {
           plan={plan}
           planEdges={combinedEdges}
           xtpPoints={xtpPoints}
-          hideArrows={liveGuideState.length > 0}
           focusToPoint={focusToPoint}
           focusToLeg={focusToLeg}
           carEmissions={carEmissions}
@@ -2042,34 +1908,28 @@ export default function ItineraryPage(props, context) {
       detailView || altTransitHash.includes(hash) ? 'pop' : undefined;
 
     return (
-      <>
-        {guideSheet}
-        <DesktopView
-          title={title}
-          header={header}
-          bckBtnFallback={bckBtnFallback}
-          content={content}
-          settingsDrawer={settingsDrawer}
-          map={map}
-          scrollable
-        />
-      </>
+      <DesktopView
+        title={title}
+        header={header}
+        bckBtnFallback={bckBtnFallback}
+        content={content}
+        settingsDrawer={settingsDrawer}
+        map={map}
+        scrollable
+      />
     );
   }
 
   return (
-    <>
-      {guideSheet}
-      <MobileView
-        header={header}
-        content={content}
-        settingsDrawer={settingsDrawer}
-        map={map}
-        ref={mobileRef}
-        match={match}
-        enableBottomScroll={!naviMode}
-      />
-    </>
+    <MobileView
+      header={header}
+      content={content}
+      settingsDrawer={settingsDrawer}
+      map={map}
+      ref={mobileRef}
+      match={match}
+      enableBottomScroll={!naviMode}
+    />
   );
 }
 

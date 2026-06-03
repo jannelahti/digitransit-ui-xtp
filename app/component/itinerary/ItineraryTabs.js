@@ -14,7 +14,6 @@ function ItineraryTabs({
   recommendedIndex,
   feedback = {},
   giveFeedback,
-  hideArrows = false,
   ...rest
 }) {
   const itineraryTabs = planEdges.map((edge, i) => {
@@ -49,7 +48,6 @@ function ItineraryTabs({
     <SwipeableTabs
       tabs={itineraryTabs}
       tabIndex={tabIndex}
-      hideArrows={hideArrows}
       onSwipe={changeHash}
       classname={isMobile ? 'swipe-mobile-divider' : 'swipe-desktop-view'}
       ariaRole="swipe-summary-page-tab"
@@ -66,7 +64,6 @@ ItineraryTabs.propTypes = {
   recommendedIndex: PropTypes.number,
   feedback: PropTypes.objectOf(PropTypes.bool),
   giveFeedback: PropTypes.func,
-  hideArrows: PropTypes.bool,
 };
 
 export default ItineraryTabs;
