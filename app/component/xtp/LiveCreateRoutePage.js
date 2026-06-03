@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'found';
 import LiveArrowImage from './LiveArrowImage';
 import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel } from './liveRoute';
 
@@ -277,6 +278,7 @@ const LiveCreateRoutePage = () => {
           destination — each shown with a live Street View image and a turn arrow.
         </div>
         <div className="xtp-row">
+          <Link className="xtp-btn" to="/v2/route-editor">‹ Editor</Link>
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
             Auto generate live route
           </button>

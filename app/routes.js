@@ -158,9 +158,9 @@ export default config => {
           ).then(getDefault)
         }
       />
-      {/* Track B — live Street View routes (plan §13) */}
+      {/* /v2 — Street View guided-route system (two portals: editor + routing) */}
       <Route
-        path="/luo-live-reitti"
+        path="/v2/route-editor/new"
         getComponent={() =>
           import(
             /* webpackChunkName: "livecreateroute" */ './component/xtp/LiveCreateRoutePage'
@@ -168,23 +168,7 @@ export default config => {
         }
       />
       <Route
-        path="/live-reitit/hallinta"
-        getComponent={() =>
-          import(
-            /* webpackChunkName: "livemanage" */ './component/xtp/LiveManagePage'
-          ).then(getDefault)
-        }
-      />
-      <Route
-        path="/live-reitit"
-        getComponent={() =>
-          import(
-            /* webpackChunkName: "liveroutes" */ './component/xtp/LiveRoutesPage'
-          ).then(getDefault)
-        }
-      />
-      <Route
-        path="/edit-route/:id"
+        path="/v2/route-editor/:id"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveedit" */ './component/xtp/LiveEditRoutePage'
@@ -192,10 +176,26 @@ export default config => {
         }
       />
       <Route
-        path="/live-reitti/:id"
+        path="/v2/route-editor"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "routeeditorhome" */ './component/xtp/RouteEditorHome'
+          ).then(getDefault)
+        }
+      />
+      <Route
+        path="/v2/routes/:id"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveguide" */ './component/xtp/LiveGuidePage'
+          ).then(getDefault)
+        }
+      />
+      <Route
+        path="/v2/routes"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "liveroutes" */ './component/xtp/LiveRoutesPage'
           ).then(getDefault)
         }
       />

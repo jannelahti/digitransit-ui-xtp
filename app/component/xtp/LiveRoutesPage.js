@@ -43,20 +43,13 @@ const LiveRoutesPage = () => {
       <p className="sub">
         Routes guided with live Street View imagery. Pick one to follow it turn by turn.
       </p>
-      <Link to="/luo-live-reitti" className="create">
-        + Create live route
-      </Link>
-      <Link to="/live-reitit/hallinta" className="manage">
-        Manage routes
-      </Link>
-
       {error && <div className="xtp-live-empty">Could not load routes: {error}</div>}
       {!error && routes == null && <div className="xtp-live-empty">Loading…</div>}
       {!error && routes && routes.length === 0 && (
         <div className="xtp-live-empty">No live routes yet — create the first one.</div>
       )}
       {routes && routes.map(r => (
-        <Link key={r.id} to={`/live-reitti/${r.id}`} className="xtp-live-card">
+        <Link key={r.id} to={`/v2/routes/${r.id}`} className="xtp-live-card">
           <div className="name">{r.name}</div>
           <div className="od">{r.startAddress} → {r.endAddress}</div>
           <div className="meta">{r.waypoints} guidance points</div>
