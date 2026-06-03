@@ -8,10 +8,30 @@
 export const LIVE = {
   generate: '/api/live/generate',
   save: '/api/live/save',
-  catalog: '/api/live/catalog',
+  catalog: '/api/live/catalog', // active only (tester list)
+  catalogAll: '/api/live/catalog?all=1', // active + inactive (manage hub)
   config: '/api/live/config',
-  route: id => `/api/live/route/${id}`,
+  route: id => `/api/live/route/${id}`, // GET / PUT / DELETE by method
 };
+
+// Compass bearing a → b in degrees [0,360). Used when a waypoint is dragged or
+// inserted in the editor to recompute heading/turn from neighbours.
+export function bearing(a, b) {
+  const toRad = d => (d * Math.PI) / 180;
+  const φ1 = toRad(a.lat);
+  const φ2 = toRad(b.lat);
+  const Δλ = toRad(b.lon - a.lon);
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x =
+    Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (((Math.atan2(y, x) * 180) / Math.PI) + 360) % 360;
+}
+
+// Signed turn from an incoming to an outgoing bearing, in (-180,180].
+// Positive = right (matches the arrow convention in LiveArrowImage).
+export function signedTurn(inBearing, outBearing) {
+  return ((outBearing - inBearing + 540) % 360) - 180;
+}
 
 // Precision-5 google polyline -> [[lat, lon], ...]
 export function decodePolyline(str) {
@@ -57,8 +77,11 @@ export function getStreetViewKey() {
 
 // Google Street View Static image URL. We shoot from the waypoint's approach
 // camera (camLat/camLon) facing the travel heading, so the junction is ahead.
-export function streetViewUrl(wp, key, { w = 640, h = 400, fov = 90, scale = 2 } = {}) {
+export function streetViewUrl(wp, key, opts = {}) {
   if (!key) return null;
+  const { w = 640, h = 400, scale = 2 } = opts;
+  // explicit opts.fov (editor slider) wins, else the saved per-point fov, else 90
+  const fov = opts.fov ?? wp.fov ?? 90;
   const lat = wp.camLat ?? wp.lat;
   const lon = wp.camLon ?? wp.lon;
   const params = new URLSearchParams({

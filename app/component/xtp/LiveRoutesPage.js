@@ -14,6 +14,8 @@ const STYLE = `
 .xtp-live-list .create { display:inline-block; margin-bottom:18px; border:1px solid #1455c0; background:#1455c0;
   color:#fff; border-radius:8px; padding:8px 14px; font-size:14px; font-weight:600; text-decoration:none; }
 .xtp-live-list .create:hover { background:#0e459f; }
+.xtp-live-list .manage { display:inline-block; margin: 0 0 18px 12px; color:#1455c0; font-size:14px; text-decoration:none; }
+.xtp-live-list .manage:hover { text-decoration:underline; }
 .xtp-live-card { display:block; border:1px solid #e1e5ea; border-radius:10px; padding:14px 16px; margin-bottom:10px;
   text-decoration:none; color:#1c2430; transition:box-shadow .15s, border-color .15s; }
 .xtp-live-card:hover { box-shadow:0 3px 12px rgba(0,0,0,.1); border-color:#c7ccd4; }
@@ -43,6 +45,9 @@ const LiveRoutesPage = () => {
       </p>
       <Link to="/luo-live-reitti" className="create">
         + Create live route
+      </Link>
+      <Link to="/live-reitit/hallinta" className="manage">
+        Manage routes
       </Link>
 
       {error && <div className="xtp-live-empty">Could not load routes: {error}</div>}

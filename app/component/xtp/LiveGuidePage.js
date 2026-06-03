@@ -110,7 +110,7 @@ const LiveGuidePage = ({ match }) => {
 
       {wp && (
         <div className="xtp-gcard">
-          <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 400, fov: 90 }} />
+          <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 400 }} />
           <div className="xtp-gcard-meta">
             <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>
             <span className="lbl">{waypointLabel(wp, wps.length)}</span>

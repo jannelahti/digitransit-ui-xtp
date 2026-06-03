@@ -168,10 +168,26 @@ export default config => {
         }
       />
       <Route
+        path="/live-reitit/hallinta"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "livemanage" */ './component/xtp/LiveManagePage'
+          ).then(getDefault)
+        }
+      />
+      <Route
         path="/live-reitit"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveroutes" */ './component/xtp/LiveRoutesPage'
+          ).then(getDefault)
+        }
+      />
+      <Route
+        path="/live-reitti/:id/muokkaa"
+        getComponent={() =>
+          import(
+            /* webpackChunkName: "liveedit" */ './component/xtp/LiveEditRoutePage'
           ).then(getDefault)
         }
       />
