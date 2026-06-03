@@ -41,7 +41,7 @@ const STYLE = `
 ${LIVE_STYLE}
 `;
 
-const LiveGuideSheet = ({ matches, position }) => {
+const LiveGuideSheet = ({ matches, position, simEnabled, onSimWalk }) => {
   // Flatten matched routes into one ordered step sequence (multi-leg = sequential).
   const steps = [];
   (matches || []).forEach(m => {
@@ -51,24 +51,19 @@ const LiveGuideSheet = ({ matches, position }) => {
   const [svKey, setSvKey] = useState('');
   const [step, setStep] = useState(0);
   const [auto, setAuto] = useState(true);
-  // Dev-only GPS simulation (gated behind ?simgps in the URL) — feeds a fake
-  // position through the real auto-advance logic, for testing where browser
-  // location is unavailable (e.g. blocked by org policy).
-  const simEnabled =
-    typeof window !== 'undefined' && /[?&]simgps/.test(window.location.search);
-  const [simPos, setSimPos] = useState(null);
-  const effPos = simPos || position;
 
   useEffect(() => { getStreetViewKey().then(setSvKey); }, []);
 
   // GPS auto-advance: when walking within range of the next waypoint, step on.
+  // `position` comes from PositionStore — real GPS in the field, or the dev
+  // ?simgps walk (which dispatches interpolated positions through the store).
   useEffect(() => {
-    if (!auto || !effPos || (effPos.lat === 0 && effPos.lon === 0)) return;
+    if (!auto || !position || (position.lat === 0 && position.lon === 0)) return;
     const next = steps[step + 1];
-    if (next && distanceMeters(effPos, { lat: next.wp.lat, lon: next.wp.lon }) < ADVANCE_RANGE_M) {
+    if (next && distanceMeters(position, { lat: next.wp.lat, lon: next.wp.lon }) < ADVANCE_RANGE_M) {
       setStep(step + 1);
     }
-  }, [effPos, auto, step, steps]);
+  }, [position, auto, step, steps]);
 
   if (steps.length === 0) return null;
   const safeStep = Math.min(step, steps.length - 1);
@@ -109,12 +104,8 @@ const LiveGuideSheet = ({ matches, position }) => {
             <button
               type="button"
               className="xtp-guide-auto off"
-              title="Simulate GPS: jump to the next waypoint (tests auto-advance)"
-              disabled={safeStep >= steps.length - 1}
-              onClick={() => {
-                const next = steps[safeStep + 1];
-                if (next) { setAuto(true); setSimPos({ lat: next.wp.lat, lon: next.wp.lon }); }
-              }}
+              title="Simulate GPS: walk the route (start/stop) to test auto-advance"
+              onClick={() => { setAuto(true); setStep(0); if (onSimWalk) onSimWalk(); }}
             >
               Sim▷
             </button>
@@ -128,11 +119,15 @@ const LiveGuideSheet = ({ matches, position }) => {
 LiveGuideSheet.propTypes = {
   matches: PropTypes.arrayOf(PropTypes.shape({})),
   position: PropTypes.shape({ lat: PropTypes.number, lon: PropTypes.number }),
+  simEnabled: PropTypes.bool,
+  onSimWalk: PropTypes.func,
 };
 
 LiveGuideSheet.defaultProps = {
   matches: [],
   position: undefined,
+  simEnabled: false,
+  onSimWalk: undefined,
 };
 
 export default connectToStores(LiveGuideSheet, [PositionStore], ({ getStore }) => ({

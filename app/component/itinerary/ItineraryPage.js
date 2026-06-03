@@ -85,7 +85,7 @@ import {
   updateClient,
 } from './ItineraryPageUtils';
 import ItineraryTabs from './ItineraryTabs';
-import { LIVE } from '../xtp/liveRoute';
+import { LIVE, distanceMeters } from '../xtp/liveRoute';
 import LiveGuideSheet from '../xtp/LiveGuideSheet';
 import { useItineraryContext } from './context/ItineraryContext';
 import { REDUCER_ACTION_TYPES } from './context/useItineraryReducer';
@@ -145,7 +145,8 @@ export default function ItineraryPage(props, context) {
   const mobileRef = useRef();
   const ariaRef = useRef('summary-page.title');
   const mapLayerRef = useRef();
-  
+  const simWalkRef = useRef(null); // dev ?simgps walk interval
+
   const [state, setState] = useState({
     ...emptyState,
     loading: LOADSTATE.UNSET,
@@ -1386,6 +1387,61 @@ export default function ItineraryPage(props, context) {
     setMapState({ bounds: boundWithMinimumArea(pts), center: undefined, zoom: undefined });
     setTimeout(() => mwtRef.current?.map?.updateZoom(), 1);
   }, [liveGuideState, detailView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Dev-only (?simgps): walk a simulated GPS position gradually along the matched
+  // route's waypoints, dispatching it into PositionStore so the map's location dot
+  // moves and the guidance auto-advance triggers as it nears each waypoint. Used
+  // to test/demo where real geolocation is unavailable (e.g. org-blocked).
+  const runSimWalk = () => {
+    if (simWalkRef.current) {
+      clearInterval(simWalkRef.current);
+      simWalkRef.current = null;
+      return; // second click stops the walk
+    }
+    const pts = liveGuideState
+      .flatMap(info => (info.route?.waypoints || []).map(wp => ({ lat: wp.lat, lon: wp.lon })))
+      .filter(p => p.lat && p.lon);
+    if (pts.length < 2) {
+      return;
+    }
+    const path = [];
+    for (let k = 0; k < pts.length - 1; k += 1) {
+      const a = pts[k];
+      const b = pts[k + 1];
+      const n = Math.max(1, Math.round(distanceMeters(a, b) / 5)); // ~5 m steps
+      for (let s = 0; s < n; s += 1) {
+        path.push({ lat: a.lat + ((b.lat - a.lat) * s) / n, lon: a.lon + ((b.lon - a.lon) * s) / n });
+      }
+    }
+    path.push(pts[pts.length - 1]);
+    let i = 0;
+    simWalkRef.current = setInterval(() => {
+      if (i >= path.length) {
+        clearInterval(simWalkRef.current);
+        simWalkRef.current = null;
+        return;
+      }
+      const p = path[i];
+      i += 1;
+      executeAction(actionContext =>
+        actionContext.dispatch('GeolocationFound', {
+          lat: p.lat,
+          lon: p.lon,
+          heading: null,
+          disableFiltering: true,
+        }),
+      );
+    }, 200);
+  };
+
+  useEffect(
+    () => () => {
+      if (simWalkRef.current) {
+        clearInterval(simWalkRef.current);
+      }
+    },
+    [],
+  );
   
   // merge two separate bike + transit plans into one
   useEffect(() => {
@@ -1731,9 +1787,15 @@ export default function ItineraryPage(props, context) {
   const xtpPoints = xtpInfoState;
   // Street View guidance bottom sheet — shown in the detail/navigation view when
   // the plan's walk legs matched stored routes (map stays visible behind it).
+  const simEnabled =
+    typeof window !== 'undefined' && /[?&]simgps/.test(window.location.search);
   const guideSheet =
     detailView && liveGuideState.length > 0 ? (
-      <LiveGuideSheet matches={liveGuideState} />
+      <LiveGuideSheet
+        matches={liveGuideState}
+        simEnabled={simEnabled}
+        onSimWalk={runSimWalk}
+      />
     ) : null;
 
   // console.log(['Just before renderMap xtpPoints=',xtpPoints]);
