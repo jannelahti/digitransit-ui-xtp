@@ -337,6 +337,13 @@ export const xtpShape = PropTypes.shape({
   name: PropTypes.string,
   alternate_polyline: PropTypes.string,
   activation_range: PropTypes.number,
+  // Track B (live Street View) point fields — set when type === 'streetview'.
+  routeId: PropTypes.string,
+  heading: PropTypes.number,
+  turnAngle: PropTypes.number,
+  fov: PropTypes.number,
+  camLat: PropTypes.number,
+  camLon: PropTypes.number,
 });
 
 const StatusPropType = PropTypes.oneOf([

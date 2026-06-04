@@ -6,6 +6,8 @@ import { withLeaflet } from 'react-leaflet/es/context'; // New for Leaflet acces
 import Popup from 'react-leaflet/es/Popup';
 import { locationShape } from '../../../util/shapes';
 import Card from '../../Card';
+import { getStreetViewKey, LIVE_STYLE } from '../../xtp/liveRoute';
+import LiveArrowImage from '../../xtp/LiveArrowImage';
 // import Toggle from '../../Toggle';
 /*
   pid = 'xtp_0', 'xtp_1', etc.
@@ -28,7 +30,14 @@ class XtpPopup extends React.Component {
     xtp_last_index: PropTypes.number.isRequired,
     lat: PropTypes.number.isRequired,
     lon: PropTypes.number.isRequired,
-    xtpurl: PropTypes.string.isRequired,
+    xtpurl: PropTypes.string,
+    // Track B (live Street View) point fields — present when xtpType==='streetview'.
+    xtpType: PropTypes.string,
+    heading: PropTypes.number,
+    turnAngle: PropTypes.number,
+    fov: PropTypes.number,
+    camLat: PropTypes.number,
+    camLon: PropTypes.number,
     handlePrev: PropTypes.func.isRequired,
     handleNext: PropTypes.func.isRequired,
     handleSetIndex: PropTypes.func.isRequired,
@@ -37,6 +46,16 @@ class XtpPopup extends React.Component {
     autoOpen: PropTypes.bool.isRequired,
     picSize: PropTypes.string.isRequired,
     locationState: locationShape.isRequired,
+  };
+
+  static defaultProps = {
+    xtpurl: '',
+    xtpType: 'photo',
+    heading: 0,
+    turnAngle: null,
+    fov: undefined,
+    camLat: undefined,
+    camLon: undefined,
   };
   
   constructor(props) {
@@ -47,6 +66,7 @@ class XtpPopup extends React.Component {
       height: 0,
       // size: 'S',
       zoom: this.props.leaflet.map.getZoom(),
+      svKey: '', // Street View key, fetched on mount for streetview points
     };
   }
   
@@ -81,12 +101,22 @@ class XtpPopup extends React.Component {
   componentDidMount() {
     // Runs immediately after the DOM has been updated.
     // console.log('componentDidMount');
+    this.mounted = true;
     this.props.leaflet.map.on('zoomend', this.onMapZoom);
     window.addEventListener('resize', this.updateDimensions);
+    // Live Street View points need the referrer-restricted key (cached promise).
+    if (this.props.xtpType === 'streetview') {
+      getStreetViewKey().then(k => {
+        if (this.mounted) {
+          this.setState({ svKey: k });
+        }
+      });
+    }
   }
 
   componentWillUnmount() {
     // console.log('componentWillUnmount');
+    this.mounted = false;
     this.props.leaflet.map.off('zoomend', this.onMapZoom);
     window.removeEventListener('resize', this.updateDimensions);
   }
@@ -226,7 +256,26 @@ class XtpPopup extends React.Component {
               <div className="xtp-map-popup-button-wrapper"><button onClick={this.handleClose}>Close</button></div>
             </div>
             <div className="xtp-image-container">
-              <img src={this.props.xtpurl} width={dimw} alt="" />
+              {this.props.xtpType === 'streetview' ? (
+                <>
+                  <style>{LIVE_STYLE}</style>
+                  <LiveArrowImage
+                    wp={{
+                      lat: this.props.lat,
+                      lon: this.props.lon,
+                      camLat: this.props.camLat,
+                      camLon: this.props.camLon,
+                      heading: this.props.heading,
+                      turnAngle: this.props.turnAngle,
+                      fov: this.props.fov,
+                    }}
+                    svKey={this.state.svKey}
+                    opts={{ w: 640, h: 480 }}
+                  />
+                </>
+              ) : (
+                <img src={this.props.xtpurl} width={dimw} alt="" />
+              )}
               <div className="xtp-popup-left-button-wrapper"><button className={btnClasses} disabled={!prev_state} onClick={this.props.handlePrev}>{p_title}</button></div>
               <div className="xtp-popup-right-button-wrapper"><button className={btnClasses} disabled={!next_state} onClick={this.props.handleNext}>{n_title}</button></div>
             </div>

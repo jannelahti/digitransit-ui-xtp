@@ -167,6 +167,12 @@ function XtpLocationMarker(props) {
         lat={props.xtp.lat}
         lon={props.xtp.lon}
         xtpurl={props.xtp.url}
+        xtpType={props.xtp.type}
+        heading={props.xtp.heading}
+        turnAngle={props.xtp.turnAngle}
+        fov={props.xtp.fov}
+        camLat={props.xtp.camLat}
+        camLon={props.xtp.camLon}
         key={`${props.xtp.lat}${props.xtp.lon}`}
         xtp_last_index={props.xtp_last_index}
         pid={props.pid}

@@ -52,6 +52,7 @@ import DesktopView from '../DesktopView';
 import Loading from '../Loading';
 import MobileView from '../MobileView';
 import ItineraryPageMap from '../map/ItineraryPageMap';
+import { LIVE } from '../xtp/liveRoute';
 import AlternativeItineraryBar from './AlternativeItineraryBar';
 import CustomizeSearch from './customizesearch/CustomizeSearch';
 import { spinnerPosition } from './ItineraryList';
@@ -1298,13 +1299,56 @@ export default function ItineraryPage(props, context) {
             //   infos: JSON_DATA.infos
             // });
           });
-          setXTPInfoState(JSON_DATA.infos);
-        } else {
-          setXTPInfoState([]);
+          // Track A populated JSON_DATA.infos; state is set after the Track B
+          // query below so old + new guidance merge in one update.
         }
       } catch (error) {
         // console.log(['error.message=',error.message]);
       }
+      // ── Track B (live Street View, sidecar) — additive guidance. Same request
+      // contract as Track A. Old (Track A) takes precedence per (edge,leg): only
+      // fill legs Track A did not already match. type:'streetview' points carry
+      // heading/turn/fov so XtpPopup renders a live Street View frame + arrow. ──
+      const coveredA = new Set(
+        JSON_DATA.infos.map(p => `${p.edge_index}_${p.leg_index}`),
+      );
+      try {
+        const lresp = await fetch(LIVE.search, {
+          method: 'POST',
+          body: JSON.stringify(request_data),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (lresp.ok) {
+          const ldata = await lresp.json();
+          (ldata.infos || []).forEach(info => {
+            if (coveredA.has(`${info.edge_index}_${info.leg_index}`)) {
+              return; // old guidance wins for this leg
+            }
+            (info.route?.waypoints || []).forEach(wp => {
+              JSON_DATA.infos.push({
+                edge_index: info.edge_index,
+                leg_index: info.leg_index,
+                alternate_polyline: '',
+                activation_range: 40,
+                type: 'streetview',
+                routeId: info.route.id,
+                name: info.route.name,
+                lat: parseFloat(wp.lat),
+                lon: parseFloat(wp.lon),
+                camLat: wp.camLat != null ? parseFloat(wp.camLat) : undefined,
+                camLon: wp.camLon != null ? parseFloat(wp.camLon) : undefined,
+                heading: wp.heading != null ? parseFloat(wp.heading) : 0,
+                turnAngle: wp.turnAngle != null ? parseFloat(wp.turnAngle) : null,
+                fov: wp.fov != null ? parseFloat(wp.fov) : undefined,
+                url: '',
+              });
+            });
+          });
+        }
+      } catch (error) {
+        // sidecar optional — ignore live-search failures
+      }
+      setXTPInfoState(JSON_DATA.infos);
     }
   }
   /*
