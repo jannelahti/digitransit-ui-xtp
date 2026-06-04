@@ -1709,7 +1709,24 @@ export default function ItineraryPage(props, context) {
   const to = otpToLocation(params.to);
   const viaPoints = getIntermediatePlaces(query);
   const xtpPoints = xtpInfoState;
-  
+
+  // Track B: live Street View routes matching the selected itinerary's walk
+  // (same edge_index convention as the markers). Drives the "Start guided walk"
+  // launch button into the fullscreen guide.
+  const guidedRoutes = [];
+  const seenGuided = new Set();
+  xtpInfoState.forEach(p => {
+    if (
+      p.type === 'streetview' &&
+      p.edge_index === selectedIndex &&
+      p.routeId &&
+      !seenGuided.has(p.routeId)
+    ) {
+      seenGuided.add(p.routeId);
+      guidedRoutes.push({ id: p.routeId, name: p.name });
+    }
+  });
+
   // console.log(['Just before renderMap xtpPoints=',xtpPoints]);
 
   const hasItineraries = combinedEdges.length > 0;
@@ -1826,25 +1843,38 @@ export default function ItineraryPage(props, context) {
           : undefined;
       carEmissions = carEmissions ? Math.round(carEmissions) : undefined;
       content = (
-        <ItineraryTabs
-          isMobile={!desktop}
-          tabIndex={selectedIndex}
-          recommendedIndex={recommendedItinerary}
-          feedback={feedback}
-          giveFeedback={feedbackProp}
-          changeHash={changeHash}
-          plan={plan}
-          planEdges={combinedEdges}
-          xtpPoints={xtpPoints}
-          focusToPoint={focusToPoint}
-          focusToLeg={focusToLeg}
-          carEmissions={carEmissions}
-          bikePublicItineraryCount={bikePublicPlan.bikePublicItineraryCount}
-          carPublicItineraryCount={carPublicPlan.carPublicItineraryCount}
-          openSettings={showSettingsPanel}
-          relayEnvironment={props.relayEnvironment}
-          startNavigation={navigateHook}
-        />
+        <>
+          {guidedRoutes.map(r => (
+            <a
+              key={r.id}
+              href={`/v2/routes/${r.id}`}
+              className="xtp-start-guided"
+            >
+              <span aria-hidden>📷</span>
+              <span>Start guided walk{guidedRoutes.length > 1 ? `: ${r.name}` : ''}</span>
+              <span aria-hidden>›</span>
+            </a>
+          ))}
+          <ItineraryTabs
+            isMobile={!desktop}
+            tabIndex={selectedIndex}
+            recommendedIndex={recommendedItinerary}
+            feedback={feedback}
+            giveFeedback={feedbackProp}
+            changeHash={changeHash}
+            plan={plan}
+            planEdges={combinedEdges}
+            xtpPoints={xtpPoints}
+            focusToPoint={focusToPoint}
+            focusToLeg={focusToLeg}
+            carEmissions={carEmissions}
+            bikePublicItineraryCount={bikePublicPlan.bikePublicItineraryCount}
+            carPublicItineraryCount={carPublicPlan.carPublicItineraryCount}
+            openSettings={showSettingsPanel}
+            relayEnvironment={props.relayEnvironment}
+            startNavigation={navigateHook}
+          />
+        </>
       );
     }
   } else {
