@@ -235,7 +235,8 @@ class XtpPopup extends React.Component {
       <Popup
         position={{ lat: this.props.lat+0.0001, lng: this.props.lon }}
         offset={[0, 0]}
-        autoPanPaddingTopLeft={[5, 125]}
+        autoPanPaddingTopLeft={[10, 90]}
+        autoPanPaddingBottomRight={[10, 40]}
         onClose={() => {
           // console.log('onClose.');
         }}
@@ -246,7 +247,7 @@ class XtpPopup extends React.Component {
         }}
         maxWidth={dimwpx}
         width={dimwpx}
-        autoPan={false}
+        autoPan
         className={xtpClassNames}
       >
         <Card className="no-margin">
