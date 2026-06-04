@@ -1823,6 +1823,25 @@ div.leaflet-control-scale-line {
   padding: 28px 16px;
   text-align: center;
 }
+/* On small screens the popup width-buckets (tuned for desktop photo viewing)
+   make the SV image taller than the available map area (the top half, above the
+   itinerary sheet), so most of it ends up off-screen. Constrain the popup to the
+   viewport: never wider than the screen, and cap the image height so the whole
+   picture + arrow fit and auto-pan can bring it fully into view. */
+@media (max-width: 899px) {
+  .single-popup-xtp .leaflet-popup-content {
+    width: auto !important;
+    max-width: 88vw;
+  }
+  .xtp-image-container > .xtp-sv {
+    max-width: 88vw;
+  }
+  .xtp-image-container > .xtp-sv > img {
+    max-height: 32vh;
+    width: auto;
+    max-width: 100%;
+  }
+}
 .xtp-popup-left-button-wrapper {
   position: absolute;
   top: 0px;
