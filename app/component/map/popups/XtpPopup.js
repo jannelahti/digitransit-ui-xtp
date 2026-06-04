@@ -248,7 +248,11 @@ class XtpPopup extends React.Component {
         maxWidth={dimwpx}
         width={dimwpx}
         autoPan
-        className={xtpClassNames}
+        className={
+          this.props.xtpType === 'streetview'
+            ? `${xtpClassNames} xtp-popup-sv`
+            : xtpClassNames
+        }
       >
         <Card className="no-margin">
           <div className="xtp-popup-wrapper">

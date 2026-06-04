@@ -1829,17 +1829,13 @@ div.leaflet-control-scale-line {
    viewport: never wider than the screen, and cap the image height so the whole
    picture + arrow fit and auto-pan can bring it fully into view. */
 @media (max-width: 899px) {
-  .single-popup-xtp .leaflet-popup-content {
-    width: auto !important;
-    max-width: 88vw;
-  }
-  .xtp-image-container > .xtp-sv {
-    max-width: 88vw;
-  }
-  .xtp-image-container > .xtp-sv > img {
-    max-height: 32vh;
-    width: auto;
-    max-width: 100%;
+  /* SV popups only (.xtp-popup-sv) — the photo width-buckets are desktop-sized,
+     so on a phone force a viewport-friendly width; the image fills it at normal
+     4:3 and the whole popup fits the small map area above the itinerary sheet.
+     Stored-photo popups are untouched. */
+  .xtp-popup-sv .leaflet-popup-content {
+    width: 86vw !important;
+    max-width: 320px;
   }
 }
 .xtp-popup-left-button-wrapper {
