@@ -14,12 +14,16 @@ import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel } fro
 const STYLE = `
 .xtp-wrap { position: relative; height: calc(100vh - 64px); }
 .xtp-map { position: absolute; inset: 0; }
-.xtp-panel { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 2000;
-  background:#fff; border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.22); padding:14px 16px; }
-.xtp-panel h2 { margin:0 0 4px; font-size:16px; }
-.xtp-panel .hint { color:#5a6270; font-size:13px; margin-bottom:10px; }
-.xtp-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.xtp-spacer { flex:1; }
+/* Left-anchored, transparent control panel so it doesn't block the map (matches
+ * the edit page). No background; the buttons carry their own, and the text gets
+ * a white halo so it stays legible over the map. */
+.xtp-panel { position: fixed; left: 16px; bottom: 16px; z-index: 2000;
+  width: min(320px, calc(100vw - 32px)); background:transparent; box-shadow:none; padding:0; }
+.xtp-panel h2 { margin:0 0 6px; font-size:16px; color:#1c2430;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
+.xtp-panel .hint { color:#1c2430; font-size:13px; margin-bottom:10px;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
+.xtp-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 .xtp-btn { border:1px solid #c7ccd4; background:#fff; color:#1c2430; border-radius:8px;
   padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; transition:background .15s; }
 .xtp-btn:hover:not(:disabled){ background:#f1f3f6; }
@@ -28,7 +32,8 @@ const STYLE = `
 .xtp-btn.primary:hover:not(:disabled){ background:#0e459f; }
 .xtp-btn.success{ background:#1c7c2f; border-color:#1c7c2f; color:#fff; }
 .xtp-btn.success:hover:not(:disabled){ background:#166626; }
-.xtp-status{ font-size:13px; color:#333; min-height:18px; display:flex; align-items:center; gap:8px; }
+.xtp-status{ font-size:13px; color:#1c2430; min-height:18px; display:flex; align-items:center; gap:8px;
+  text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
 .xtp-spin{ width:16px; height:16px; border:3px solid #c7d3ea; border-top-color:#1455c0; border-radius:50%; animation:xtpspin .8s linear infinite; }
 @keyframes xtpspin { to { transform:rotate(360deg); } }
 .xtp-ctx{ display:flex; flex-direction:column; gap:6px; }
@@ -291,7 +296,6 @@ const LiveCreateRoutePage = ({ router }) => {
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
             Auto generate live route
           </button>
-          <div className="xtp-spacer" />
           <button type="button" className="xtp-btn success" onClick={accept} disabled={phase !== 'preview'}>
             Accept &amp; save
           </button>
