@@ -6,7 +6,7 @@ import { withLeaflet } from 'react-leaflet/es/context'; // New for Leaflet acces
 import Popup from 'react-leaflet/es/Popup';
 import { locationShape } from '../../../util/shapes';
 import Card from '../../Card';
-import { getStreetViewKey, LIVE_STYLE } from '../../xtp/liveRoute';
+import { getStreetViewKey } from '../../xtp/liveRoute';
 import LiveArrowImage from '../../xtp/LiveArrowImage';
 // import Toggle from '../../Toggle';
 /*
@@ -257,22 +257,19 @@ class XtpPopup extends React.Component {
             </div>
             <div className="xtp-image-container">
               {this.props.xtpType === 'streetview' ? (
-                <>
-                  <style>{LIVE_STYLE}</style>
-                  <LiveArrowImage
-                    wp={{
-                      lat: this.props.lat,
-                      lon: this.props.lon,
-                      camLat: this.props.camLat,
-                      camLon: this.props.camLon,
-                      heading: this.props.heading,
-                      turnAngle: this.props.turnAngle,
-                      fov: this.props.fov,
-                    }}
-                    svKey={this.state.svKey}
-                    opts={{ w: 640, h: 480 }}
-                  />
-                </>
+                <LiveArrowImage
+                  wp={{
+                    lat: this.props.lat,
+                    lon: this.props.lon,
+                    camLat: this.props.camLat,
+                    camLon: this.props.camLon,
+                    heading: this.props.heading,
+                    turnAngle: this.props.turnAngle,
+                    fov: this.props.fov,
+                  }}
+                  svKey={this.state.svKey}
+                  opts={{ w: 640, h: 480 }}
+                />
               ) : (
                 <img src={this.props.xtpurl} width={dimw} alt="" />
               )}

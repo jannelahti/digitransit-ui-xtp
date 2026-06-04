@@ -1781,6 +1781,48 @@ div.leaflet-control-scale-line {
 .xtp-image-container > img {
   height: auto;
 }
+/* Live Street View guidance (Track B) inside the popup. The SV image fills the
+   popup width responsively; the turn arrow + credit OVERLAY it. Defined here
+   (always bundled) rather than relying on an injected <style>, which doesn't
+   apply inside the leaflet popup and left the arrow in normal flow (a black box
+   below the image) on narrow/mobile screens. */
+.xtp-image-container > .xtp-sv {
+  position: relative;
+  line-height: 0;
+  background: #000;
+}
+.xtp-image-container > .xtp-sv > img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.xtp-image-container .xtp-sv-arrow {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  width: 34%;
+  max-width: 120px;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+.xtp-image-container .xtp-sv-credit {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+}
+.xtp-image-container .xtp-sv-missing {
+  color: #aab2c0;
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 28px 16px;
+  text-align: center;
+}
 .xtp-popup-left-button-wrapper {
   position: absolute;
   top: 0px;
