@@ -123,15 +123,30 @@ export const LIVE_STYLE = `
   text-shadow:0 1px 2px rgba(0,0,0,.9); pointer-events:none; }
 `;
 
-// A turn label for a waypoint card.
+// Generic OSM way names that aren't real streets — don't say "Turn onto sidewalk".
+const GENERIC_WAYS = new Set([
+  'bike path',
+  'path',
+  'sidewalk',
+  'footway',
+  'crossing',
+  'steps',
+  'open area',
+]);
+
+// A turn instruction for a waypoint. Turns read "Turn left/right" (from the
+// signed turn angle; + = right) and append "onto <street>" only for real named
+// streets, so generic ways don't produce "Turn onto sidewalk".
 export function waypointLabel(wp, total) {
-  const base =
-    wp.kind === 'start'
-      ? 'Start — head this way'
-      : wp.kind === 'destination'
-        ? 'Destination'
-        : wp.streetName
-          ? `Turn onto ${wp.streetName}`
-          : `Turn ${wp.position}`;
+  let base;
+  if (wp.kind === 'start') {
+    base = 'Start — head this way';
+  } else if (wp.kind === 'destination') {
+    base = 'You have arrived';
+  } else {
+    const dir = (wp.turnAngle ?? 0) >= 0 ? 'right' : 'left';
+    const named = wp.streetName && !GENERIC_WAYS.has(wp.streetName);
+    base = named ? `Turn ${dir} onto ${wp.streetName}` : `Turn ${dir}`;
+  }
   return total != null ? `${base} (${wp.position + 1}/${total})` : base;
 }
