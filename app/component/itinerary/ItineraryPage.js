@@ -1212,6 +1212,7 @@ export default function ItineraryPage(props, context) {
           // const decoded = polyline.decode(leg.legGeometry.points);
           legs.push({
             leg_index: j,
+            mode: leg.mode, // so live-search can match only WALK legs
             from: {
               lat: leg.from.lat.toString(), // String!
               lon: leg.from.lon.toString(), // String!
