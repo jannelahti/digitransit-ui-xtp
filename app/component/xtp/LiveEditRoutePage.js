@@ -48,7 +48,7 @@ const STYLE = `
 .xtp-ctx button{ border:1px solid #c7ccd4; background:#fff; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px; }
 .xtp-ctx button:hover{ background:#f1f3f6; }
 
-.xtp-card{ position:fixed; top:80px; left:50%; transform:translateX(-50%); z-index:2100;
+.xtp-card{ position:fixed; top:80px; left:16px; z-index:2100;
   width:min(340px,calc(100vw - 32px)); background:#11151c; color:#fff; border-radius:12px;
   overflow:hidden; box-shadow:0 8px 28px rgba(0,0,0,.4); }
 .xtp-card-close{ position:absolute; top:6px; right:6px; z-index:3; width:26px; height:26px;
@@ -301,7 +301,7 @@ const LiveEditRoutePage = ({ match }) => {
             <button type="button" className="xtp-nav xtp-nav-r" disabled={!hasNext} onClick={() => setSelected(sel.position + 1)}>›</button>
           </div>
           <div className="xtp-card-meta">
-            <div className="lbl">{waypointLabel(sel, waypoints.length)}</div>
+            <div className="lbl">{waypointLabel(sel, waypoints)}</div>
             {(() => {
               const v = visionFlagInfo(sel);
               return v ? (

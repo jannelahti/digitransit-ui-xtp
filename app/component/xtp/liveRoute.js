@@ -140,7 +140,9 @@ const GENERIC_WAYS = new Set([
 // A turn instruction for a waypoint. Turns read "Turn left/right" (from the
 // signed turn angle; + = right) and append "onto <street>" only for real named
 // streets, so generic ways don't produce "Turn onto sidewalk".
-export function waypointLabel(wp, total) {
+export function waypointLabel(wp, waypoints) {
+  const arr = Array.isArray(waypoints) ? waypoints : null;
+  const total = arr ? arr.length : typeof waypoints === 'number' ? waypoints : null;
   let base;
   if (wp.kind === 'start') {
     base = 'Start — head this way';
@@ -150,6 +152,14 @@ export function waypointLabel(wp, total) {
     const dir = (wp.turnAngle ?? 0) >= 0 ? 'right' : 'left';
     const named = wp.streetName && !GENERIC_WAYS.has(wp.streetName);
     base = named ? `Turn ${dir} onto ${wp.streetName}` : `Turn ${dir}`;
+  }
+  // Append the distance to the next point (the leg you walk after this one).
+  if (arr && wp.kind !== 'destination') {
+    const next = arr.find(w => w.position === wp.position + 1);
+    if (next) {
+      const d = distanceMeters(wp, next);
+      if (d >= 15) base += `, then ~${Math.round(d / 10) * 10} m`;
+    }
   }
   return total != null ? `${base} (${wp.position + 1}/${total})` : base;
 }
