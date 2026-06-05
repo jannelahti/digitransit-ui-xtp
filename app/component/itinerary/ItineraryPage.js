@@ -1847,7 +1847,7 @@ export default function ItineraryPage(props, context) {
           {guidedRoutes.map(r => (
             <a
               key={r.id}
-              href={`/v2/routes/${r.id}`}
+              href={`/routes/${r.id}`}
               className="xtp-start-guided"
             >
               <span aria-hidden>📷</span>

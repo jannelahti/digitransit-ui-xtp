@@ -158,9 +158,9 @@ export default config => {
           ).then(getDefault)
         }
       />
-      {/* /v2 — Street View guided-route system (two portals: editor + routing) */}
+      {/* Street View guided-route system (two portals: editor + routing) */}
       <Route
-        path="/v2/route-editor/new"
+        path="/create-route/new"
         getComponent={() =>
           import(
             /* webpackChunkName: "livecreateroute" */ './component/xtp/LiveCreateRoutePage'
@@ -168,7 +168,7 @@ export default config => {
         }
       />
       <Route
-        path="/v2/route-editor/:id"
+        path="/create-route/:id"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveedit" */ './component/xtp/LiveEditRoutePage'
@@ -176,7 +176,7 @@ export default config => {
         }
       />
       <Route
-        path="/v2/route-editor"
+        path="/create-route"
         getComponent={() =>
           import(
             /* webpackChunkName: "routeeditorhome" */ './component/xtp/RouteEditorHome'
@@ -184,7 +184,7 @@ export default config => {
         }
       />
       <Route
-        path="/v2/routes/:id"
+        path="/routes/:id"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveguide" */ './component/xtp/LiveGuidePage'
@@ -192,7 +192,7 @@ export default config => {
         }
       />
       <Route
-        path="/v2/routes"
+        path="/routes"
         getComponent={() =>
           import(
             /* webpackChunkName: "liveroutes" */ './component/xtp/LiveRoutesPage'

@@ -3,7 +3,7 @@ import { Link } from 'found';
 import { LIVE, decodePolyline } from './liveRoute';
 
 /*
- * XTP /v2 — Route-editor cockpit (VTT-only curation). A full map with a side
+ * XTP /create-route — Route-editor cockpit (VTT-only curation). A full map with a side
  * list of all routes (active + inactive). Picking a route drops its line +
  * waypoints on the map and reveals actions (edit / activate-deactivate / delete /
  * preview). "+ Add new guided route" starts the create flow. Routes are JSON in
@@ -164,7 +164,7 @@ const RouteEditorHome = () => {
       <div className="xtp-cock-panel">
         <div className="xtp-cock-head">
           <h1>Route editor</h1>
-          <Link to="/v2/route-editor/new" className="xtp-cock-add">+ Add new guided route</Link>
+          <Link to="/create-route/new" className="xtp-cock-add">+ Add new guided route</Link>
         </div>
         <div className="xtp-cock-list">
           {error && <div className="xtp-cock-empty">Error: {error}</div>}
@@ -189,8 +189,8 @@ const RouteEditorHome = () => {
               <div className="meta">{r.waypoints} points</div>
               {selectedId === r.id && (
                 <div className="xtp-cock-acts" onClick={e => e.stopPropagation()}>
-                  <Link className="xtp-act" to={`/v2/route-editor/${r.id}`}>Edit</Link>
-                  <Link className="xtp-act" to={`/v2/routes/${r.id}`}>Preview</Link>
+                  <Link className="xtp-act" to={`/create-route/${r.id}`}>Edit</Link>
+                  <Link className="xtp-act" to={`/routes/${r.id}`}>Preview</Link>
                   <button type="button" className="xtp-act" disabled={busyId === r.id} onClick={() => toggleActive(r)}>
                     {r.active ? 'Deactivate' : 'Activate'}
                   </button>

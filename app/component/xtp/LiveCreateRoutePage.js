@@ -251,8 +251,8 @@ const LiveCreateRoutePage = ({ router }) => {
       busy.current = false; setPhase('saved');
       setStatus(`Saved ✓ live route ${data.id} — returning to editor…`);
       // Return to the cockpit, which reloads the catalog and shows the new route.
-      if (router && typeof router.push === 'function') router.push('/v2/route-editor');
-      else window.location.assign('/v2/route-editor');
+      if (router && typeof router.push === 'function') router.push('/create-route');
+      else window.location.assign('/create-route');
     } catch (err) {
       busy.current = false; setPhase('preview');
       setStatus(`Save failed: ${err.message}`);
@@ -292,7 +292,7 @@ const LiveCreateRoutePage = ({ router }) => {
           destination — each shown with a live Street View image and a turn arrow.
         </div>
         <div className="xtp-row">
-          <Link className="xtp-btn" to="/v2/route-editor">‹ Editor</Link>
+          <Link className="xtp-btn" to="/create-route">‹ Editor</Link>
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
             Auto generate live route
           </button>

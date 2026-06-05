@@ -49,7 +49,7 @@ const LiveRoutesPage = () => {
         <div className="xtp-live-empty">No live routes yet — create the first one.</div>
       )}
       {routes && routes.map(r => (
-        <Link key={r.id} to={`/v2/routes/${r.id}`} className="xtp-live-card">
+        <Link key={r.id} to={`/routes/${r.id}`} className="xtp-live-card">
           <div className="name">{r.name}</div>
           <div className="od">{r.startAddress} → {r.endAddress}</div>
           <div className="meta">{r.waypoints} guidance points</div>
