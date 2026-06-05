@@ -8,6 +8,7 @@ import {
   decodePolyline,
   getStreetViewKey,
   waypointLabel,
+  visionFlagInfo,
   bearing,
   signedTurn,
 } from './liveRoute';
@@ -301,6 +302,15 @@ const LiveEditRoutePage = ({ match }) => {
           </div>
           <div className="xtp-card-meta">
             <div className="lbl">{waypointLabel(sel, waypoints.length)}</div>
+            {(() => {
+              const v = visionFlagInfo(sel);
+              return v ? (
+                <div>
+                  <span className="xtp-vflag" style={{ background: v.color }}>{v.text}</span>
+                  {v.note && <div className="xtp-vnote">“{v.note}”</div>}
+                </div>
+              ) : null;
+            })()}
             <div className="xtp-slider">
               <span>Heading</span>
               <input

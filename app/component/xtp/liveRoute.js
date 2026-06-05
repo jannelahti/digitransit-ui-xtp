@@ -121,6 +121,9 @@ export const LIVE_STYLE = `
   width:34%; max-width:120px; height:auto; opacity:.95; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); pointer-events:none; }
 .xtp-sv-credit { position:absolute; right:6px; bottom:6px; z-index:2; color:#fff; font-size:11px;
   text-shadow:0 1px 2px rgba(0,0,0,.9); pointer-events:none; }
+.xtp-vflag { display:inline-block; margin-top:5px; padding:2px 8px; border-radius:10px;
+  font-size:11px; font-weight:700; color:#fff; }
+.xtp-vnote { margin-top:4px; font-size:12px; color:#cdd3dd; font-style:italic; }
 `;
 
 // Generic OSM way names that aren't real streets — don't say "Turn onto sidewalk".
@@ -149,4 +152,21 @@ export function waypointLabel(wp, total) {
     base = named ? `Turn ${dir} onto ${wp.streetName}` : `Turn ${dir}`;
   }
   return total != null ? `${base} (${wp.position + 1}/${total})` : base;
+}
+
+// AI (Haiku vision) framing assessment for a waypoint, for display in the editor.
+// Returns null when the route was generated without the vision pass. `flag`:
+//   good      — the camera clearly shows the way to go (no action needed)
+//   ambiguous — usable but the direction isn't clear → worth a manual heading tweak
+//   none      — Street View has no useful frame here → check / hand-tune
+export function visionFlagInfo(wp) {
+  const flag = wp && wp.visionFlag;
+  if (!flag) return null;
+  const map = {
+    good: { text: 'AI: good frame', color: '#1f7a3d' },
+    ambiguous: { text: 'AI: unclear — tune heading', color: '#b06a00' },
+    none: { text: 'AI: no usable view — check', color: '#a32020' },
+  };
+  const info = map[flag] || { text: `AI: ${flag}`, color: '#555' };
+  return { ...info, note: wp.visionNote || null };
 }

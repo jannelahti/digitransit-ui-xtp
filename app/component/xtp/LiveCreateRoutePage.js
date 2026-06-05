@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'found';
 import LiveArrowImage from './LiveArrowImage';
-import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel } from './liveRoute';
+import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel, visionFlagInfo } from './liveRoute';
 
 /*
  * XTP Track B — "Create live guided route" editor (plan §13). Mirrors the
@@ -280,6 +280,15 @@ const LiveCreateRoutePage = ({ router }) => {
           </div>
           <div className="xtp-card-meta">
             <div className="lbl">{waypointLabel(sel, waypoints.length)}</div>
+            {(() => {
+              const v = visionFlagInfo(sel);
+              return v ? (
+                <div>
+                  <span className="xtp-vflag" style={{ background: v.color }}>{v.text}</span>
+                  {v.note && <div className="xtp-vnote">“{v.note}”</div>}
+                </div>
+              ) : null;
+            })()}
           </div>
         </div>
       )}
