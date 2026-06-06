@@ -71,8 +71,8 @@ const STYLE = `
   border-radius:8px; padding:7px 0; font-size:13px; font-weight:600; cursor:pointer; }
 .xtp-card-del:hover:not(:disabled){ background:#3a201c; }
 .xtp-card-del:disabled{ opacity:.4; cursor:default; }
-.xtp-prevtag{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9aa3b2; margin-bottom:2px; }
 .xtp-fld{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9aa3b2; margin:10px 0 4px; }
+.xtp-subhint{ font-size:11px; color:#8a93a2; margin-top:4px; }
 .xtp-instr{ width:100%; box-sizing:border-box; resize:vertical; border:1px solid #2b3340; border-radius:8px;
   background:#0c1018; color:#fff; font:inherit; font-size:13px; padding:7px 9px; }
 .xtp-instr::placeholder{ color:#69727f; }
@@ -352,6 +352,11 @@ const LiveEditRoutePage = ({ match }) => {
   const hasPrev = sel && waypoints.some(w => w.position === sel.position - 1);
   const hasNext = sel && waypoints.some(w => w.position === sel.position + 1);
   const saving = phase === 'saving';
+  // The automatic instruction (derived maneuver + distance, step counter stripped) —
+  // what the inline field shows when there's no custom override.
+  const autoText = sel
+    ? waypointLabel({ ...sel, instruction: null }, waypoints).replace(/\s*\(\d+\/\d+\)\s*$/, '')
+    : '';
 
   return (
     <div className="xtp-wrap">
@@ -367,9 +372,6 @@ const LiveEditRoutePage = ({ match }) => {
             <button type="button" className="xtp-nav xtp-nav-r" disabled={!hasNext} onClick={() => setSelected(sel.position + 1)}>›</button>
           </div>
           <div className="xtp-card-meta">
-            {/* The guide-facing step text — reflects the custom instruction live. */}
-            <div className="xtp-prevtag">Guide shows</div>
-            <div className="lbl">{waypointLabel(sel, waypoints)}</div>
             {(() => {
               const v = visionFlagInfo(sel);
               return v ? (
@@ -380,15 +382,18 @@ const LiveEditRoutePage = ({ match }) => {
               ) : null;
             })()}
 
-            {/* #1/#5 — custom instruction overrides the line above; blank ⇒ auto text. */}
-            <label className="xtp-fld">Custom instruction (optional)</label>
+            {/* #1/#5 — edit the guide text IN PLACE. The field shows exactly what the
+                guide displays; clear it to fall back to the automatic instruction. */}
+            <label className="xtp-fld">Instruction (step {sel.position + 1}/{waypoints.length})</label>
             <textarea
               className="xtp-instr"
               rows={2}
-              value={sel.instruction ?? ''}
-              placeholder="Leave blank to use the line above"
-              onChange={e => patchSelected({ instruction: e.target.value })}
+              value={sel.instruction || autoText}
+              onChange={e => patchSelected({ instruction: e.target.value === '' ? null : e.target.value })}
             />
+            <div className="xtp-subhint">
+              {sel.instruction ? 'Custom — clear the field to revert to automatic.' : 'Automatic — edit to customise.'}
+            </div>
             {sel.visionNote && (
               <button type="button" className="xtp-mini" onClick={() => patchSelected({ instruction: sel.visionNote })}>
                 Use AI note

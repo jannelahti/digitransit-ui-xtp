@@ -10,7 +10,7 @@ import { streetViewUrl } from './liveRoute';
  * `opts.noImage` renders the arrow over a plain panel with no Street View fetch —
  * used for waypoints the author marked as not needing a guidance photo.
  */
-const ARROW_PATH = 'M50 8 L82 52 L64 52 L64 92 L36 92 L36 52 L18 52 Z';
+const ARROW_PATH = 'M50 14 L70 48 L58 48 L58 88 L42 88 L42 48 L30 48 Z';
 
 const LiveArrowImage = ({ wp, svKey, opts }) => {
   const noImage = !!(opts && opts.noImage);
