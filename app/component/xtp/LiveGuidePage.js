@@ -96,6 +96,7 @@ const LiveGuidePage = ({ match, router }) => {
   const radiusCircle = useRef(null); // trigger radius of the current step
   const routeBounds = useRef(null); // whole-route bounds, for the initial fit
   const simUsed = useRef(false); // once true, stopping sim freezes instead of grabbing real GPS
+  const followedOnce = useRef(false); // zoom-to-walk once, then pan to follow
 
   const [svKey, setSvKey] = useState('');
   const [route, setRoute] = useState(null);
@@ -178,13 +179,19 @@ const LiveGuidePage = ({ match, router }) => {
     if (!mapReady || !Lm || !map.current) return;
     if (radiusCircle.current) { map.current.removeLayer(radiusCircle.current); radiusCircle.current = null; }
     const wlist = route?.waypoints || [];
-    const w = wlist[Math.min(step + 1, wlist.length - 1)];
-    if (w) {
-      radiusCircle.current = Lm.circle([w.lat, w.lon], {
+    const idxs = [...new Set([step, Math.min(step + 1, wlist.length - 1)])];
+    const grp = Lm.layerGroup();
+    idxs.forEach(i => {
+      const w = wlist[i];
+      if (!w) return;
+      grp.addLayer(Lm.circle([w.lat, w.lon], {
         radius: w.triggerM ?? TRIGGER_DEFAULT_M,
-        color: '#ff2d2d', weight: 1, fillColor: '#ff2d2d', fillOpacity: 0.1,
-      }).addTo(map.current);
-    }
+        color: '#ff2d2d', weight: 1, fillColor: '#ff2d2d',
+        fillOpacity: i === step ? 0.06 : 0.13, // current dim, next brighter
+      }));
+    });
+    grp.addTo(map.current);
+    radiusCircle.current = grp;
   }, [step, route, mapReady]);
 
   // Position source: simulation walks the route polyline (the ▶ Simulate toggle or
@@ -238,6 +245,14 @@ const LiveGuidePage = ({ match, router }) => {
         .addTo(map.current);
     } else {
       dot.current.setLatLng(ll);
+    }
+    // Follow progress: zoom in to walking level the first time we get a position,
+    // then pan to keep the dot centred (respecting any manual zoom).
+    if (!followedOnce.current) {
+      map.current.setView(ll, Math.max(map.current.getZoom(), 17), { animate: true });
+      followedOnce.current = true;
+    } else {
+      map.current.panTo(ll, { animate: true, duration: 0.4 });
     }
   }, [pos]);
 
