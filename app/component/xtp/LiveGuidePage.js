@@ -210,7 +210,7 @@ const LiveGuidePage = ({ match, router }) => {
     const ll = [pos.lat, pos.lon];
     if (!dot.current) {
       dot.current = L.current
-        .circleMarker(ll, { radius: 8, color: '#fff', weight: 3, fillColor: '#1976d2', fillOpacity: 1 })
+        .circleMarker(ll, { radius: 11, color: '#fff', weight: 3, fillColor: '#ff8a00', fillOpacity: 1 })
         .addTo(map.current);
     } else {
       dot.current.setLatLng(ll);
