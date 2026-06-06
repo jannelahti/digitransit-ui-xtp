@@ -34,6 +34,10 @@ const STYLE = `
   background:#1455c0; color:#fff; }
 .xtp-gsim.on{ background:#b0271f; }
 .xtp-gsim:hover{ filter:brightness(1.07); }
+.xtp-gspeed{ position:absolute; top:90px; left:10px; z-index:1100; border:none; border-radius:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer;
+  background:#fff; color:#1c2430; min-width:44px; }
+.xtp-gspeed:hover{ background:#f1f3f6; }
 .xtp-gtitle{ position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1100;
   background:#fff; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px;
   font-size:13px; font-weight:600; color:#1c2430; max-width:calc(100vw - 220px);
@@ -102,6 +106,9 @@ const LiveGuidePage = ({ match, router }) => {
   const [sim, setSim] = useState(
     () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('simgps'),
   );
+  const [speed, setSpeed] = useState(1); // 1× / 2× / 3× sim speed
+  const speedRef = useRef(1);
+  speedRef.current = speed; // read by the sim interval without restarting it
 
   // Load key + route JSON.
   useEffect(() => {
@@ -151,13 +158,14 @@ const LiveGuidePage = ({ match, router }) => {
     };
   }, [route]);
 
-  // Draw the current step's trigger radius on the map (#B) so you can see the zone
-  // that flips the photo to full / advances the guide.
+  // Draw the NEXT point's trigger radius on the map (#B) — the upcoming zone you're
+  // walking toward, which will advance the guide / flip the photo to full when entered.
   useEffect(() => {
     const Lm = L.current;
     if (!mapReady || !Lm || !map.current) return;
     if (radiusCircle.current) { map.current.removeLayer(radiusCircle.current); radiusCircle.current = null; }
-    const w = (route?.waypoints || [])[step];
+    const wlist = route?.waypoints || [];
+    const w = wlist[Math.min(step + 1, wlist.length - 1)];
     if (w) {
       radiusCircle.current = Lm.circle([w.lat, w.lon], {
         radius: w.triggerM ?? TRIGGER_DEFAULT_M,
@@ -186,11 +194,11 @@ const LiveGuidePage = ({ match, router }) => {
       setStep(0); // walk from the start whenever simulation begins
       let traveled = 0;
       const timer = setInterval(() => {
-        traveled += 1; // 1 m per tick
+        traveled += speedRef.current; // 1 m × speed per tick
         const p = pointAlong(path, segLen, total, traveled);
         setPos({ lat: p[0], lon: p[1] });
-        if (traveled >= total) clearInterval(timer);
-      }, 500); // ~2 m/s — smooth, slow walk for previewing
+        if (traveled >= total) { clearInterval(timer); setSim(false); } // reset toggle so ▶ restarts
+      }, 500); // 1× ≈ 2 m/s; 2×/3× scale up
       return () => clearInterval(timer);
     }
     if (navigator.geolocation) {
@@ -267,8 +275,13 @@ const LiveGuidePage = ({ match, router }) => {
       <button type="button" className={`xtp-gsim${sim ? ' on' : ''}`} onClick={() => setSim(s => !s)}>
         {sim ? '⏸ Stop' : '▶ Simulate'}
       </button>
+      {sim && (
+        <button type="button" className="xtp-gspeed" onClick={() => setSpeed(s => (s % 3) + 1)} title="Simulation speed">
+          {speed}×
+        </button>
+      )}
       <div className={`xtp-gcard${atPoint ? '' : ' mini'}`}>
-        {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
+        {wp && <LiveArrowImage key={step} wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
         <div className="xtp-ginstr">{wp ? waypointLabel(wp, wps) : ''}</div>
         <div className="xtp-gnavrow">
           <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>
