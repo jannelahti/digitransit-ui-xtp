@@ -29,6 +29,11 @@ const STYLE = `
   background:#fff; border:none; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18);
   padding:6px 14px 6px 11px; font-size:14px; font-weight:600; color:#1c2430; cursor:pointer; }
 .xtp-gback:hover{ background:#f1f3f6; }
+.xtp-gsim{ position:absolute; bottom:10px; left:10px; z-index:1001; border:none; border-radius:20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer;
+  background:#1455c0; color:#fff; }
+.xtp-gsim.on{ background:#b0271f; }
+.xtp-gsim:hover{ filter:brightness(1.07); }
 .xtp-gtitle{ position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1000;
   background:#fff; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px;
   font-size:13px; font-weight:600; color:#1c2430; max-width:calc(100vw - 150px);
@@ -87,6 +92,9 @@ const LiveGuidePage = ({ match, router }) => {
   const [pos, setPos] = useState(null);
   const stepRef = useRef(0);
   stepRef.current = step; // latest step for the marker-build effect (runs on [route])
+  const [sim, setSim] = useState(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('simgps'),
+  );
 
   // Load key + route JSON.
   useEffect(() => {
@@ -133,10 +141,10 @@ const LiveGuidePage = ({ match, router }) => {
     };
   }, [route]);
 
-  // Position source: `?simgps` walks the route polyline; otherwise real GPS.
+  // Position source: simulation walks the route polyline (the ▶ Simulate toggle or
+  // `?simgps`); otherwise real GPS.
   useEffect(() => {
     if (!route) return undefined;
-    const sim = new URLSearchParams(window.location.search).has('simgps');
     if (sim) {
       const path = decodePolyline(route.polyline || '');
       if (path.length < 2) return undefined;
@@ -150,6 +158,7 @@ const LiveGuidePage = ({ match, router }) => {
         segLen.push(d);
         total += d;
       }
+      setStep(0); // walk from the start whenever simulation begins
       let traveled = 0;
       const timer = setInterval(() => {
         traveled += 8; // ~8 m per tick → brisk demo walk
@@ -168,7 +177,7 @@ const LiveGuidePage = ({ match, router }) => {
       return () => navigator.geolocation.clearWatch(wid);
     }
     return undefined;
-  }, [route]);
+  }, [route, sim]);
 
   // Draw / move the live "you are here" dot.
   useEffect(() => {
@@ -231,6 +240,9 @@ const LiveGuidePage = ({ match, router }) => {
         <div ref={mapEl} className="xtp-gmap" />
         <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
         <div className="xtp-gtitle">{route.name}</div>
+        <button type="button" className={`xtp-gsim${sim ? ' on' : ''}`} onClick={() => setSim(s => !s)}>
+          {sim ? '⏸ Stop' : '▶ Simulate'}
+        </button>
       </div>
       <div className={`xtp-gpanel${atPoint ? '' : ' enroute'}`}>
         {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
