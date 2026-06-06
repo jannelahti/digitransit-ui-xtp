@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'found';
 import LiveArrowImage from './LiveArrowImage';
-import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel, visionFlagInfo } from './liveRoute';
+import { LIVE, LIVE_STYLE, decodePolyline, getStreetViewKey, waypointLabel, visionFlagInfo, addBaseLayers, waypointMarkerHtml } from './liveRoute';
 
 /*
  * XTP Track B — "Create live guided route" editor (plan §13). Mirrors the
@@ -85,12 +85,7 @@ const LiveCreateRoutePage = ({ router }) => {
       const Lm = mod.default || mod;
       L.current = Lm;
       const m = Lm.map(mapEl.current, { zoomControl: true }).setView([61.4978, 23.761], 15);
-      Lm.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 20,
-        detectRetina: true,
-        attribution: '© OpenStreetMap, © CARTO',
-      }).addTo(m);
+      addBaseLayers(Lm, m);
       wpLayer.current = Lm.layerGroup().addTo(m);
       m.on('click', e => {
         if (busy.current) return;
@@ -177,8 +172,7 @@ const LiveCreateRoutePage = ({ router }) => {
 
   function addMarker(wp) {
     const Lm = L.current;
-    const color = wp.kind === 'start' ? '#1c7c2f' : wp.kind === 'destination' ? '#b0271f' : '#1455c0';
-    const html = `<div style="background:${color};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.4)">${wp.position + 1}</div>`;
+    const html = waypointMarkerHtml(wp, 24);
     const marker = Lm.marker([wp.lat, wp.lon], {
       icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [24, 24], iconAnchor: [12, 12] }),
     });
@@ -249,10 +243,12 @@ const LiveCreateRoutePage = ({ router }) => {
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
       busy.current = false; setPhase('saved');
-      setStatus(`Saved ✓ live route ${data.id} — returning to editor…`);
-      // Return to the cockpit, which reloads the catalog and shows the new route.
-      if (router && typeof router.push === 'function') router.push('/create-route');
-      else window.location.assign('/create-route');
+      const dest = `/create-route/${data.id}`;
+      setStatus(`Saved ✓ live route ${data.id} — opening editor…`);
+      // Drop straight into the full editor for the route just created, so the
+      // author can annotate without going via the list.
+      if (router && typeof router.push === 'function') router.push(dest);
+      else window.location.assign(dest);
     } catch (err) {
       busy.current = false; setPhase('preview');
       setStatus(`Save failed: ${err.message}`);

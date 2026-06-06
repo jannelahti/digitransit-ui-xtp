@@ -77,6 +77,37 @@ export function decodePolyline(str) {
   return coords;
 }
 
+// Add the Track-B base layers + a switcher to a Leaflet map: Carto Voyager (default,
+// added to the map) and an Esri World Imagery satellite layer. Returns nothing.
+export function addBaseLayers(Lm, map) {
+  const voyager = Lm.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    { subdomains: 'abcd', maxZoom: 20, detectRetina: true, attribution: '© OpenStreetMap, © CARTO' },
+  );
+  const satellite = Lm.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 20, attribution: 'Imagery © Esri' },
+  );
+  voyager.addTo(map);
+  Lm.control.layers({ Map: voyager, Satellite: satellite }, {}, { position: 'topright' }).addTo(map);
+}
+
+// Waypoint marker HTML: a numbered colour dot (start green / destination red /
+// turn blue) with a small triangle on its rim pointing in the camera heading
+// (north = up), so the Street View direction is visible on the map. `size` is the
+// dot diameter in px. Pair with divIcon className 'xtp-wp' + the .xtp-wp* styles.
+export function waypointMarkerHtml(wp, size = 26) {
+  const color =
+    wp.kind === 'start' ? '#1c7c2f' : wp.kind === 'destination' ? '#b0271f' : '#1455c0';
+  const head = Math.round(wp.heading ?? 0);
+  return (
+    `<div class="xtp-wpmk" style="width:${size}px;height:${size}px">` +
+    `<div class="xtp-wphead" style="transform:rotate(${head}deg)"><i class="xtp-wphead-tri"></i></div>` +
+    `<div class="xtp-wpdot" style="background:${color};font-size:${Math.round(size * 0.46)}px">${wp.position + 1}</div>` +
+    `</div>`
+  );
+}
+
 // Fetch the referrer-restricted Street View key once (cached). Resolves to ''
 // when unconfigured so callers can show a placeholder instead of broken images.
 let keyPromise = null;
@@ -121,12 +152,23 @@ export const LIVE_STYLE = `
 .xtp-sv-noimg { width:100%; height:100%; min-height:220px; background:#1b212b;
   background-image:repeating-linear-gradient(45deg,#1b212b,#1b212b 12px,#20283400 12px,#202834 24px); }
 .xtp-sv-arrow { position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
-  width:34%; max-width:120px; height:auto; opacity:.95; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); pointer-events:none; }
+  width:24%; max-width:88px; height:auto; opacity:1; filter:drop-shadow(0 1px 3px rgba(0,0,0,.55)); pointer-events:none; }
 .xtp-sv-credit { position:absolute; right:6px; bottom:6px; z-index:2; color:#fff; font-size:11px;
   text-shadow:0 1px 2px rgba(0,0,0,.9); pointer-events:none; }
 .xtp-vflag { display:inline-block; margin-top:5px; padding:2px 8px; border-radius:10px;
   font-size:11px; font-weight:700; color:#fff; }
 .xtp-vnote { margin-top:4px; font-size:12px; color:#cdd3dd; font-style:italic; }
+/* Waypoint marker: numbered dot with a rim triangle pointing in the camera heading
+ * (north = up). See waypointMarkerHtml. */
+.xtp-wp { background:none; border:0; }
+.xtp-wpmk { position:relative; }
+.xtp-wphead { position:absolute; inset:0; pointer-events:none; }
+.xtp-wphead-tri { position:absolute; left:50%; top:-4px; transform:translateX(-50%);
+  width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent;
+  border-bottom:7px solid #11151c; filter:drop-shadow(0 0 1px rgba(255,255,255,.9)); }
+.xtp-wpdot { position:absolute; inset:0; color:#fff; border-radius:50%; display:flex;
+  align-items:center; justify-content:center; border:2px solid #fff; font-weight:700;
+  box-shadow:0 1px 4px rgba(0,0,0,.4); }
 `;
 
 // Generic OSM way names that aren't real streets — don't say "Turn onto sidewalk".

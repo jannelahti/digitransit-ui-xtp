@@ -12,6 +12,8 @@ import {
   visionFlagInfo,
   bearing,
   signedTurn,
+  addBaseLayers,
+  waypointMarkerHtml,
 } from './liveRoute';
 
 /*
@@ -69,6 +71,7 @@ const STYLE = `
   border-radius:8px; padding:7px 0; font-size:13px; font-weight:600; cursor:pointer; }
 .xtp-card-del:hover:not(:disabled){ background:#3a201c; }
 .xtp-card-del:disabled{ opacity:.4; cursor:default; }
+.xtp-prevtag{ font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9aa3b2; margin-bottom:2px; }
 .xtp-fld{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9aa3b2; margin:10px 0 4px; }
 .xtp-instr{ width:100%; box-sizing:border-box; resize:vertical; border:1px solid #2b3340; border-radius:8px;
   background:#0c1018; color:#fff; font:inherit; font-size:13px; padding:7px 9px; }
@@ -90,10 +93,6 @@ const STYLE = `
 .xtp-gloading{ padding:40px; text-align:center; color:#5a6270; }
 ${LIVE_STYLE}
 `;
-
-// Marker colour by kind, matching the create/guide pages.
-const colorFor = kind =>
-  kind === 'start' ? '#1c7c2f' : kind === 'destination' ? '#b0271f' : '#1455c0';
 
 // Recompute heading + turnAngle for one index from its neighbours' geometry.
 // start → face the next point (no turn); destination → face from the previous
@@ -165,12 +164,7 @@ const LiveEditRoutePage = ({ match }) => {
       const Lm = mod.default || mod;
       L.current = Lm;
       const m = Lm.map(mapEl.current, { zoomControl: true }).setView([61.4978, 23.761], 15);
-      Lm.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 20,
-        detectRetina: true,
-        attribution: '© OpenStreetMap, © CARTO',
-      }).addTo(m);
+      addBaseLayers(Lm, m);
       if (meta.polyline) {
         const line = Lm.polyline(decodePolyline(meta.polyline), { color: '#1455c0', weight: 5, opacity: 0.6 }).addTo(m);
         m.fitBounds(line.getBounds(), { padding: [50, 50] });
@@ -195,7 +189,7 @@ const LiveEditRoutePage = ({ match }) => {
     if (!mapReady || !Lm || !wpLayer.current) return;
     wpLayer.current.clearLayers();
     waypoints.forEach(wp => {
-      const html = `<div style="background:${colorFor(wp.kind)};color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.4)">${wp.position + 1}</div>`;
+      const html = waypointMarkerHtml(wp, 26);
       const marker = Lm.marker([wp.lat, wp.lon], {
         draggable: true,
         icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [26, 26], iconAnchor: [13, 13] }),
@@ -373,6 +367,8 @@ const LiveEditRoutePage = ({ match }) => {
             <button type="button" className="xtp-nav xtp-nav-r" disabled={!hasNext} onClick={() => setSelected(sel.position + 1)}>›</button>
           </div>
           <div className="xtp-card-meta">
+            {/* The guide-facing step text — reflects the custom instruction live. */}
+            <div className="xtp-prevtag">Guide shows</div>
             <div className="lbl">{waypointLabel(sel, waypoints)}</div>
             {(() => {
               const v = visionFlagInfo(sel);
@@ -384,13 +380,13 @@ const LiveEditRoutePage = ({ match }) => {
               ) : null;
             })()}
 
-            {/* #1 — custom instruction text (overrides the derived label). */}
-            <label className="xtp-fld">Instruction</label>
+            {/* #1/#5 — custom instruction overrides the line above; blank ⇒ auto text. */}
+            <label className="xtp-fld">Custom instruction (optional)</label>
             <textarea
               className="xtp-instr"
               rows={2}
               value={sel.instruction ?? ''}
-              placeholder={waypointLabel({ ...sel, instruction: '' }, waypoints)}
+              placeholder="Leave blank to use the line above"
               onChange={e => patchSelected({ instruction: e.target.value })}
             />
             {sel.visionNote && (

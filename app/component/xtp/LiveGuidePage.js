@@ -8,6 +8,8 @@ import {
   distanceMeters,
   getStreetViewKey,
   waypointLabel,
+  addBaseLayers,
+  waypointMarkerHtml,
 } from './liveRoute';
 
 /*
@@ -100,20 +102,14 @@ const LiveGuidePage = ({ match, router }) => {
       const Lm = mod.default || mod;
       L.current = Lm;
       const m = Lm.map(mapEl.current, { zoomControl: true });
-      Lm.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        subdomains: 'abcd',
-        maxZoom: 20,
-        detectRetina: true,
-        attribution: '© OpenStreetMap, © CARTO',
-      }).addTo(m);
+      addBaseLayers(Lm, m);
       if (route.polyline) {
         const line = Lm.polyline(decodePolyline(route.polyline), { color: '#1455c0', weight: 5, opacity: 0.75 }).addTo(m);
         m.fitBounds(line.getBounds(), { padding: [40, 40] });
       }
       wpLayer.current = Lm.layerGroup().addTo(m);
       (route.waypoints || []).forEach(wp => {
-        const color = wp.kind === 'start' ? '#1c7c2f' : wp.kind === 'destination' ? '#b0271f' : '#1455c0';
-        const html = `<div style="background:${color};color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.4)">${wp.position + 1}</div>`;
+        const html = waypointMarkerHtml(wp, 24);
         const marker = Lm.marker([wp.lat, wp.lon], {
           icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [24, 24], iconAnchor: [12, 12] }),
         });
