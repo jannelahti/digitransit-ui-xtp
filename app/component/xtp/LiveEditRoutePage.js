@@ -14,6 +14,7 @@ import {
   signedTurn,
   addBaseLayers,
   waypointMarkerHtml,
+  TRIGGER_DEFAULT_M,
 } from './liveRoute';
 
 /*
@@ -128,6 +129,7 @@ const LiveEditRoutePage = ({ match }) => {
   const L = useRef(null);
   const map = useRef(null);
   const wpLayer = useRef(null);
+  const circle = useRef(null); // trigger-radius circle for the selected point
   const busy = useRef(false);
 
   const [svKey, setSvKey] = useState('');
@@ -202,6 +204,21 @@ const LiveEditRoutePage = ({ match }) => {
       marker.addTo(wpLayer.current);
     });
   }, [waypoints, mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show the selected point's GPS trigger radius as a circle on the map (#B), and
+  // keep it in sync as the radius slider or the point's position changes.
+  useEffect(() => {
+    const Lm = L.current;
+    if (!mapReady || !Lm || !map.current) return;
+    if (circle.current) { map.current.removeLayer(circle.current); circle.current = null; }
+    const wp = selected != null ? waypoints.find(w => w.position === selected) : null;
+    if (wp) {
+      circle.current = Lm.circle([wp.lat, wp.lon], {
+        radius: wp.triggerM ?? TRIGGER_DEFAULT_M,
+        color: '#ff2d2d', weight: 1, fillColor: '#ff2d2d', fillOpacity: 0.12,
+      }).addTo(map.current);
+    }
+  }, [selected, waypoints, mapReady]);
 
   // Drag: update position + recompute the affected neighbourhood only (so manual
   // heading/FOV tweaks on other points survive).
@@ -434,6 +451,17 @@ const LiveEditRoutePage = ({ match }) => {
                 Reset arrow to geometry
               </button>
             )}
+
+            {/* #B — GPS auto-advance radius for this point (drawn as a circle on the map). */}
+            <div className="xtp-slider">
+              <span>Radius</span>
+              <input
+                type="range" min="10" max="100" step="5"
+                value={sel.triggerM ?? TRIGGER_DEFAULT_M}
+                onChange={e => patchSelected({ triggerM: Number(e.target.value) })}
+              />
+              <span className="val">{sel.triggerM ?? TRIGGER_DEFAULT_M} m</span>
+            </div>
 
             {/* #4 — does this point show a Street View photo in the guide? */}
             <label className="xtp-check">

@@ -10,6 +10,7 @@ import {
   waypointLabel,
   addBaseLayers,
   waypointMarkerHtml,
+  TRIGGER_DEFAULT_M,
 } from './liveRoute';
 
 /*
@@ -20,8 +21,6 @@ import {
  * waypoint. `?simgps` walks a simulated position along the route for desktop
  * demos. No images are stored — frames are fetched live from Google.
  */
-const STEP_REACHED_M = 30; // auto-advance when within this of the next waypoint
-
 const STYLE = `
 .xtp-gwrap { position: relative; height: calc(100vh - 64px); display:flex; flex-direction:column; background:#11151c; }
 .xtp-gmap-wrap { position:relative; height:34vh; min-height:150px; flex:none; }
@@ -37,6 +36,9 @@ const STYLE = `
 .xtp-gpanel { flex:1; display:flex; flex-direction:column; color:#fff; min-height:0; }
 .xtp-gpanel > .xtp-sv { flex:1; min-height:0; }
 .xtp-gpanel > .xtp-sv img { width:100%; height:100%; object-fit:cover; }
+/* Between points (#C): shrink + dim the Street View, since you're not at a guidance point yet. */
+.xtp-gpanel.enroute > .xtp-sv { flex:none; height:30vh; opacity:.5; transition:height .3s, opacity .3s; }
+.xtp-genroute { text-align:center; font-size:13px; color:#aab2c0; padding:8px 16px 0; }
 .xtp-ginstr { padding:12px 16px 2px; font-size:16px; font-weight:700; text-align:center; }
 .xtp-gnavrow { display:flex; align-items:center; justify-content:center; gap:18px; padding:8px 16px 14px; }
 .xtp-gnav{ border:1px solid #3a4150; background:#1b212b; color:#fff; border-radius:10px;
@@ -181,14 +183,18 @@ const LiveGuidePage = ({ match, router }) => {
     }
   }, [pos]);
 
-  // Auto-advance the step as the position nears the next waypoint.
+  // Auto-advance: jump to the FURTHEST upcoming waypoint we're within range of, so a
+  // skipped or under-triggered point doesn't strand the guide. Monotonic forward only
+  // (never goes back, never re-fires a passed point). Per-point radius (triggerM).
   useEffect(() => {
     if (!pos || !route) return;
     const wps = route.waypoints || [];
-    const next = wps[step + 1];
-    if (next && distanceMeters(pos, { lat: next.lat, lon: next.lon }) <= STEP_REACHED_M) {
-      setStep(s => Math.min(s + 1, wps.length - 1));
+    let target = step;
+    for (let i = step + 1; i < wps.length; i += 1) {
+      const radius = wps[i].triggerM ?? TRIGGER_DEFAULT_M;
+      if (distanceMeters(pos, { lat: wps[i].lat, lon: wps[i].lon }) <= radius) target = i;
     }
+    if (target !== step) setStep(target);
   }, [pos, step, route]);
 
   // Highlight the current step's marker (red ring); plain ring for the rest.
@@ -213,6 +219,10 @@ const LiveGuidePage = ({ match, router }) => {
 
   const wps = route.waypoints || [];
   const wp = wps[step];
+  // "At this point" when within its trigger radius (or when we have no GPS fix yet) —
+  // drives the photo emphasis. Between points the photo shrinks/dims (#C).
+  const curRadius = wp && wp.triggerM != null ? wp.triggerM : TRIGGER_DEFAULT_M;
+  const atPoint = !pos || (wp && distanceMeters(pos, { lat: wp.lat, lon: wp.lon }) <= curRadius);
 
   return (
     <div className="xtp-gwrap">
@@ -222,8 +232,9 @@ const LiveGuidePage = ({ match, router }) => {
         <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
         <div className="xtp-gtitle">{route.name}</div>
       </div>
-      <div className="xtp-gpanel">
+      <div className={`xtp-gpanel${atPoint ? '' : ' enroute'}`}>
         {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
+        {!atPoint && <div className="xtp-genroute">Walking… keep going to the next point</div>}
         <div className="xtp-ginstr">{wp ? waypointLabel(wp, wps) : ''}</div>
         <div className="xtp-gnavrow">
           <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>

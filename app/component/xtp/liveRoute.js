@@ -5,6 +5,11 @@
  * is drawn as an SVG overlay (no pixels stored → within Google terms).
  */
 
+// Default GPS auto-advance / "at this point" radius (m) when a waypoint has no
+// per-point `triggerM`. Shared by the guide (auto-advance, photo emphasis) and the
+// editor (slider default, map circle).
+export const TRIGGER_DEFAULT_M = 30;
+
 export const LIVE = {
   generate: '/api/live/generate',
   save: '/api/live/save',
