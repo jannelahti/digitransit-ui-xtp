@@ -24,6 +24,7 @@ const STYLE = `
 .xtp-panel .hint { color:#1c2430; font-size:13px; margin-bottom:10px;
   text-shadow:0 1px 4px rgba(255,255,255,.95), 0 0 3px rgba(255,255,255,.95); }
 .xtp-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.xtp-btns { display:flex; flex-direction:column; gap:8px; align-items:stretch; width:200px; max-width:calc(100vw - 32px); }
 .xtp-btn { border:1px solid #c7ccd4; background:#fff; color:#1c2430; border-radius:8px;
   padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; transition:background .15s; }
 .xtp-btn:hover:not(:disabled){ background:#f1f3f6; }
@@ -204,18 +205,37 @@ const LiveCreateRoutePage = ({ router }) => {
       found += 1;
       setCount(found);
     });
-    source.addEventListener('done', e => {
+    source.addEventListener('done', async e => {
       meta.current = JSON.parse(e.data);
-      setWaypoints(meta.current.waypoints);
+      const wps = meta.current.waypoints;
+      setWaypoints(wps);
       // Drop the A/B endpoint pins — the numbered start/destination waypoint
       // markers now sit on top of them and are otherwise unclickable.
       [startMarker, endMarker].forEach(r => {
         if (r.current) { map.current.removeLayer(r.current); r.current = null; }
       });
-      busy.current = false;
       source.close();
-      setPhase('preview');
-      setStatus(`Done — ${found} guidance points. Click a point to review, then Accept or Reject.`);
+      // Auto-save the generated draft and drop straight into the editor — no
+      // separate accept step. A bad route can be deleted from the editor home.
+      setPhase('saving');
+      setStatus(`Generated ${found} points — saving & opening editor…`);
+      try {
+        const r = await fetch(LIVE.save, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...meta.current, waypoints: wps }),
+        });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
+        busy.current = false;
+        const dest = `/create-route/${data.id}`;
+        if (router && typeof router.push === 'function') router.push(dest);
+        else window.location.assign(dest);
+      } catch (err) {
+        busy.current = false;
+        setPhase('idle');
+        setStatus(`Save failed: ${err.message}`);
+      }
     });
     source.addEventListener('failed', e => {
       busy.current = false; source.close(); setPhase('idle');
@@ -227,32 +247,6 @@ const LiveCreateRoutePage = ({ router }) => {
       source.close();
       if (!meta.current) { busy.current = false; setPhase('idle'); setStatus('Connection to the generator was lost.'); }
     };
-  }
-
-  async function accept() {
-    if (!meta.current) return;
-    busy.current = true;
-    setPhase('saving');
-    setStatus('Saving route…');
-    try {
-      const r = await fetch(LIVE.save, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...meta.current, waypoints }),
-      });
-      const data = await r.json();
-      if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
-      busy.current = false; setPhase('saved');
-      const dest = `/create-route/${data.id}`;
-      setStatus(`Saved ✓ live route ${data.id} — opening editor…`);
-      // Drop straight into the full editor for the route just created, so the
-      // author can annotate without going via the list.
-      if (router && typeof router.push === 'function') router.push(dest);
-      else window.location.assign(dest);
-    } catch (err) {
-      busy.current = false; setPhase('preview');
-      setStatus(`Save failed: ${err.message}`);
-    }
   }
 
   const generating = phase === 'generating';
@@ -296,17 +290,16 @@ const LiveCreateRoutePage = ({ router }) => {
           Generate places a “head this way” point at the start, a turn point at each junction, and the
           destination — each shown with a live Street View image and a turn arrow.
         </div>
-        <div className="xtp-row">
-          <Link className="xtp-btn" to="/create-route">‹ Editor</Link>
+        <div className="xtp-btns">
           <button type="button" className="xtp-btn primary" onClick={generate} disabled={genDisabled}>
-            Auto generate live route
+            {generating ? 'Generating…' : 'Auto generate live route'}
           </button>
-          <button type="button" className="xtp-btn success" onClick={accept} disabled={phase !== 'preview'}>
-            Accept &amp; save
-          </button>
-          <button type="button" className="xtp-btn" onClick={resetAll} disabled={generating || phase === 'saving'}>
-            Reject / reset
-          </button>
+          {(start || end || generating) && (
+            <button type="button" className="xtp-btn" onClick={resetAll} disabled={phase === 'saving'}>
+              Reset
+            </button>
+          )}
+          <Link className="xtp-btn" to="/create-route">‹ Editor</Link>
         </div>
         <div className="xtp-status" style={{ marginTop: 8 }}>
           {generating && <span className="xtp-spin" />}
