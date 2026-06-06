@@ -97,6 +97,7 @@ const LiveGuidePage = ({ match, router }) => {
   const routeBounds = useRef(null); // whole-route bounds, for the initial fit
   const simUsed = useRef(false); // once true, stopping sim freezes instead of grabbing real GPS
   const followedOnce = useRef(false); // zoom-to-walk once, then pan to follow
+  const traveledRef = useRef(0); // metres walked so far (survives pause/resume)
 
   const [svKey, setSvKey] = useState('');
   const [route, setRoute] = useState(null);
@@ -212,13 +213,14 @@ const LiveGuidePage = ({ match, router }) => {
         segLen.push(d);
         total += d;
       }
-      setStep(0); // walk from the start whenever simulation begins
-      let traveled = 0;
+      if (traveledRef.current >= total) traveledRef.current = 0; // finished → restart from start
+      if (traveledRef.current === 0) setStep(0); // fresh start aligns to the first step
+      // else: resume from where we paused (keep traveled + step)
       const timer = setInterval(() => {
-        traveled += speedRef.current; // 1 m × speed per tick
-        const p = pointAlong(path, segLen, total, traveled);
+        traveledRef.current += speedRef.current; // 1 m × speed per tick
+        const p = pointAlong(path, segLen, total, traveledRef.current);
         setPos({ lat: p[0], lon: p[1] });
-        if (traveled >= total) { clearInterval(timer); setSim(false); } // reset toggle so ▶ restarts
+        if (traveledRef.current >= total) { clearInterval(timer); setSim(false); } // finished
       }, 500); // 1× ≈ 2 m/s; 2×/3× scale up
       return () => clearInterval(timer);
     }
@@ -305,7 +307,7 @@ const LiveGuidePage = ({ match, router }) => {
       <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
       <div className="xtp-gtitle">{route.name}</div>
       <button type="button" className={`xtp-gsim${sim ? ' on' : ''}`} onClick={() => setSim(s => !s)}>
-        {sim ? '⏸ Stop' : '▶ Simulate'}
+        {sim ? '⏸ Pause' : traveledRef.current > 0 ? '▶ Resume' : '▶ Simulate'}
       </button>
       {sim && (
         <button type="button" className="xtp-gspeed" onClick={() => setSpeed(s => (s % 3) + 1)} title="Simulation speed">
