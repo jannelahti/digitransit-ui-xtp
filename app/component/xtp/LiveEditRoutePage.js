@@ -7,6 +7,7 @@ import {
   LIVE_STYLE,
   decodePolyline,
   getStreetViewKey,
+  streetViewUrl,
   waypointLabel,
   visionFlagInfo,
   bearing,
@@ -68,6 +69,24 @@ const STYLE = `
   border-radius:8px; padding:7px 0; font-size:13px; font-weight:600; cursor:pointer; }
 .xtp-card-del:hover:not(:disabled){ background:#3a201c; }
 .xtp-card-del:disabled{ opacity:.4; cursor:default; }
+.xtp-fld{ display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#9aa3b2; margin:10px 0 4px; }
+.xtp-instr{ width:100%; box-sizing:border-box; resize:vertical; border:1px solid #2b3340; border-radius:8px;
+  background:#0c1018; color:#fff; font:inherit; font-size:13px; padding:7px 9px; }
+.xtp-instr::placeholder{ color:#69727f; }
+.xtp-mini{ margin-top:6px; border:1px solid #3a4150; background:#1b212b; color:#cdd3dd; border-radius:7px;
+  padding:5px 10px; font-size:12px; font-weight:600; cursor:pointer; }
+.xtp-mini:hover:not(:disabled){ background:#262e3a; }
+.xtp-mini:disabled{ opacity:.45; cursor:default; }
+.xtp-mini.wide{ display:block; width:100%; margin-top:10px; }
+.xtp-check{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:#cdd3dd; cursor:pointer; }
+.xtp-check input{ width:16px; height:16px; }
+.xtp-cands{ display:flex; gap:6px; margin-top:8px; }
+.xtp-cand{ flex:1; position:relative; padding:0; border:2px solid transparent; border-radius:8px; overflow:hidden;
+  background:#000; cursor:pointer; line-height:0; }
+.xtp-cand.best{ border-color:#1f7a3d; }
+.xtp-cand img{ display:block; width:100%; height:auto; }
+.xtp-cand-deg{ position:absolute; left:0; right:0; bottom:0; padding:2px 0; text-align:center;
+  font-size:10px; font-weight:700; color:#fff; background:rgba(0,0,0,.55); line-height:1.2; }
 .xtp-gloading{ padding:40px; text-align:center; color:#5a6270; }
 ${LIVE_STYLE}
 `;
@@ -116,6 +135,8 @@ const LiveEditRoutePage = ({ match }) => {
   const [meta, setMeta] = useState(null); // name + addresses + start/end + polyline
   const [waypoints, setWaypoints] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [reframe, setReframe] = useState(null); // { position, candidates, best, flag, note, fov }
+  const [reframing, setReframing] = useState(false);
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('Drag points to move them, right-click the map to add one.');
   const [phase, setPhase] = useState('loading'); // loading | ready | saving | saved
@@ -190,6 +211,9 @@ const LiveEditRoutePage = ({ match }) => {
 
   // Drag: update position + recompute the affected neighbourhood only (so manual
   // heading/FOV tweaks on other points survive).
+  // Candidate filmstrip belongs to one point — drop it when the selection changes.
+  useEffect(() => { setReframe(null); }, [selected]);
+
   function moveWaypoint(pos, lat, lon) {
     setWaypoints(prev => {
       const arr = prev.map(wp =>
@@ -243,6 +267,54 @@ const LiveEditRoutePage = ({ match }) => {
     setWaypoints(prev =>
       prev.map(wp => (wp.position === selected ? { ...wp, ...fields } : wp)),
     );
+  }
+
+  // Ask the sidecar to re-frame the selected point: it returns candidate headings
+  // and (if the AI key is set) which one best shows the way + a flag/note. We show
+  // the candidates as a filmstrip; the author clicks one to apply it. No pixels are
+  // returned — the thumbnails are fetched client-side from each candidate heading.
+  async function reframeSelected() {
+    const wp = waypoints.find(w => w.position === selected);
+    if (!wp) return;
+    setReframing(true);
+    setStatus('Asking the AI to re-frame this point…');
+    try {
+      const r = await fetch(LIVE.reframe, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lat: wp.lat, lon: wp.lon, camLat: wp.camLat, camLon: wp.camLon,
+          heading: wp.heading, turnAngle: wp.turnAngle, kind: wp.kind, streetName: wp.streetName,
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      setReframe({ position: selected, ...data });
+      setStatus(
+        data.best != null
+          ? `AI suggests candidate ${data.best + 1} (${data.flag}). Click one to apply.`
+          : 'Pick the candidate frame that best shows the way.',
+      );
+    } catch (e) {
+      setStatus(`Re-frame failed: ${e.message}`);
+    } finally {
+      setReframing(false);
+    }
+  }
+
+  // Apply one re-frame candidate to the selected point: set its heading (+ fov), and
+  // carry the AI flag/note only when applying the AI's own pick.
+  function applyCandidate(idx) {
+    if (!reframe) return;
+    const heading = reframe.candidates[idx];
+    const isBest = idx === reframe.best;
+    patchSelected({
+      heading: Math.round(heading),
+      fov: reframe.fov ?? 90,
+      ...(isBest && reframe.flag ? { visionFlag: reframe.flag } : {}),
+      ...(isBest && reframe.note ? { visionNote: reframe.note } : {}),
+    });
+    setStatus(`Applied candidate ${idx + 1}${isBest ? ' (AI pick)' : ''}.`);
   }
 
   function openContextMenu(e) {
@@ -311,6 +383,22 @@ const LiveEditRoutePage = ({ match }) => {
                 </div>
               ) : null;
             })()}
+
+            {/* #1 — custom instruction text (overrides the derived label). */}
+            <label className="xtp-fld">Instruction</label>
+            <textarea
+              className="xtp-instr"
+              rows={2}
+              value={sel.instruction ?? ''}
+              placeholder={waypointLabel({ ...sel, instruction: '' }, waypoints)}
+              onChange={e => patchSelected({ instruction: e.target.value })}
+            />
+            {sel.visionNote && (
+              <button type="button" className="xtp-mini" onClick={() => patchSelected({ instruction: sel.visionNote })}>
+                Use AI note
+              </button>
+            )}
+
             <div className="xtp-slider">
               <span>Heading</span>
               <input
@@ -329,6 +417,57 @@ const LiveEditRoutePage = ({ match }) => {
               />
               <span className="val">{sel.fov ?? 90}°</span>
             </div>
+
+            {/* #2 — arrow-direction override (+ = right); reset clears it back to geometry. */}
+            <div className="xtp-slider">
+              <span>Arrow</span>
+              <input
+                type="range" min="-100" max="100" step="5"
+                value={Math.round(sel.arrowDeg ?? sel.turnAngle ?? 0)}
+                onChange={e => patchSelected({ arrowDeg: Number(e.target.value) })}
+              />
+              <span className="val">{Math.round(sel.arrowDeg ?? sel.turnAngle ?? 0)}°</span>
+            </div>
+            {sel.arrowDeg != null && (
+              <button type="button" className="xtp-mini" onClick={() => patchSelected({ arrowDeg: null })}>
+                Reset arrow to geometry
+              </button>
+            )}
+
+            {/* #4 — does this point show a Street View photo in the guide? */}
+            <label className="xtp-check">
+              <input
+                type="checkbox"
+                checked={sel.guidance !== false}
+                onChange={e => patchSelected({ guidance: e.target.checked })}
+              />
+              Show Street View photo here
+            </label>
+
+            {/* #3 — on-demand AI re-frame + candidate filmstrip. */}
+            <button type="button" className="xtp-mini wide" disabled={reframing} onClick={reframeSelected}>
+              {reframing ? 'Re-framing…' : 'Re-frame with AI'}
+            </button>
+            {reframe && reframe.position === sel.position && (
+              <div className="xtp-cands">
+                {reframe.candidates.map((h, i) => (
+                  <button
+                    key={i} // eslint-disable-line react/no-array-index-key
+                    type="button"
+                    className={`xtp-cand${i === reframe.best ? ' best' : ''}`}
+                    title={`${Math.round(h)}°${i === reframe.best ? ' — AI pick' : ''}`}
+                    onClick={() => applyCandidate(i)}
+                  >
+                    <img
+                      src={streetViewUrl({ ...sel, heading: h }, svKey, { w: 160, h: 110, scale: 1, fov: reframe.fov ?? 90 })}
+                      alt={`Candidate ${i + 1}`}
+                    />
+                    <span className="xtp-cand-deg">{Math.round(h)}°{i === reframe.best ? ' ★' : ''}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
             <button
               type="button"
               className="xtp-card-del"

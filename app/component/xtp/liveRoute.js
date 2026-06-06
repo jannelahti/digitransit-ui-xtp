@@ -12,6 +12,7 @@ export const LIVE = {
   catalogAll: '/api/live/catalog?all=1', // active + inactive (manage hub)
   config: '/api/live/config',
   search: '/api/live/search', // POST plan legs → matching active routes (guidance)
+  reframe: '/api/live/reframe', // POST one waypoint → candidate headings + AI pick
   route: id => `/api/live/route/${id}`, // GET / PUT / DELETE by method
 };
 
@@ -117,6 +118,8 @@ export const LIVE_STYLE = `
 .xtp-sv { position:relative; background:#000; line-height:0; }
 .xtp-sv img { display:block; width:100%; }
 .xtp-sv-missing { color:#aab2c0; font-size:13px; line-height:1.4; padding:28px 16px; text-align:center; }
+.xtp-sv-noimg { width:100%; height:100%; min-height:220px; background:#1b212b;
+  background-image:repeating-linear-gradient(45deg,#1b212b,#1b212b 12px,#20283400 12px,#202834 24px); }
 .xtp-sv-arrow { position:absolute; left:50%; bottom:8px; transform:translateX(-50%);
   width:34%; max-width:120px; height:auto; opacity:.95; filter:drop-shadow(0 1px 3px rgba(0,0,0,.5)); pointer-events:none; }
 .xtp-sv-credit { position:absolute; right:6px; bottom:6px; z-index:2; color:#fff; font-size:11px;
@@ -143,6 +146,13 @@ const GENERIC_WAYS = new Set([
 export function waypointLabel(wp, waypoints) {
   const arr = Array.isArray(waypoints) ? waypoints : null;
   const total = arr ? arr.length : typeof waypoints === 'number' ? waypoints : null;
+  const withCount = base => (total != null ? `${base} (${wp.position + 1}/${total})` : base);
+
+  // An author-written instruction (annotation editor) overrides the derived
+  // maneuver + distance text entirely; only the step counter is still appended.
+  const custom = typeof wp.instruction === 'string' ? wp.instruction.trim() : '';
+  if (custom) return withCount(custom);
+
   let base;
   if (wp.kind === 'start') {
     base = 'Start — head this way';
@@ -161,7 +171,7 @@ export function waypointLabel(wp, waypoints) {
       if (d >= 15) base += `, then ~${Math.round(d / 10) * 10} m`;
     }
   }
-  return total != null ? `${base} (${wp.position + 1}/${total})` : base;
+  return withCount(base);
 }
 
 // AI (Haiku vision) framing assessment for a waypoint, for display in the editor.

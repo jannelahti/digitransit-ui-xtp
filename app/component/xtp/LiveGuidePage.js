@@ -208,7 +208,7 @@ const LiveGuidePage = ({ match, router }) => {
         <div className="xtp-gtitle">{route.name}</div>
       </div>
       <div className="xtp-gpanel">
-        {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480 }} />}
+        {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
         <div className="xtp-ginstr">{wp ? waypointLabel(wp, wps) : ''}</div>
         <div className="xtp-gnavrow">
           <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>

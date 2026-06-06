@@ -4,27 +4,33 @@ import { streetViewUrl } from './liveRoute';
 
 /*
  * One live Street View frame with the turn arrow drawn as an SVG overlay and a
- * "© Google" credit. The arrow points up and rotates by the true turn angle
- * (+ = right, clamped ±100°), matching the old baked-arrow convention; a null
- * turnAngle (destination) draws no arrow.
+ * "© Google" credit. The arrow points up and rotates by the turn angle
+ * (+ = right, clamped ±100°): the author override `wp.arrowDeg` wins, else the
+ * geometric `wp.turnAngle`; a null angle (e.g. destination) draws no arrow.
+ * `opts.noImage` renders the arrow over a plain panel with no Street View fetch —
+ * used for waypoints the author marked as not needing a guidance photo.
  */
 const ARROW_PATH = 'M50 8 L82 52 L64 52 L64 92 L36 92 L36 52 L18 52 Z';
 
 const LiveArrowImage = ({ wp, svKey, opts }) => {
-  const url = streetViewUrl(wp, svKey, opts);
-  const rot =
-    wp.turnAngle == null ? null : Math.max(-100, Math.min(100, wp.turnAngle || 0));
+  const noImage = !!(opts && opts.noImage);
+  const url = noImage ? null : streetViewUrl(wp, svKey, opts);
+  const rawRot = wp.arrowDeg != null ? wp.arrowDeg : wp.turnAngle;
+  const rot = rawRot == null ? null : Math.max(-100, Math.min(100, rawRot || 0));
+  const showArrow = (url || noImage) && rot != null;
 
   return (
     <div className="xtp-sv">
       {url ? (
         <img src={url} alt="Street View guidance" />
+      ) : noImage ? (
+        <div className="xtp-sv-noimg" />
       ) : (
         <div className="xtp-sv-missing">
           Street View image unavailable — API key not configured.
         </div>
       )}
-      {url && rot != null && (
+      {showArrow && (
         <svg
           className="xtp-sv-arrow"
           viewBox="0 0 100 100"
@@ -54,6 +60,7 @@ LiveArrowImage.propTypes = {
     camLon: PropTypes.number,
     heading: PropTypes.number,
     turnAngle: PropTypes.number,
+    arrowDeg: PropTypes.number,
   }).isRequired,
   svKey: PropTypes.string,
   opts: PropTypes.shape({}),
