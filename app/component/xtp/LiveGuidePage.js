@@ -83,6 +83,8 @@ const LiveGuidePage = ({ match, router }) => {
   const [error, setError] = useState(null);
   const [step, setStep] = useState(0);
   const [pos, setPos] = useState(null);
+  const stepRef = useRef(0);
+  stepRef.current = step; // latest step for the marker-build effect (runs on [route])
 
   // Load key + route JSON.
   useEffect(() => {
@@ -109,7 +111,7 @@ const LiveGuidePage = ({ match, router }) => {
       }
       wpLayer.current = Lm.layerGroup().addTo(m);
       (route.waypoints || []).forEach(wp => {
-        const html = waypointMarkerHtml(wp, 24);
+        const html = waypointMarkerHtml(wp, 24, wp.position === stepRef.current);
         const marker = Lm.marker([wp.lat, wp.lon], {
           icon: Lm.divIcon({ className: 'xtp-wp', html, iconSize: [24, 24], iconAnchor: [12, 12] }),
         });
@@ -188,6 +190,23 @@ const LiveGuidePage = ({ match, router }) => {
       setStep(s => Math.min(s + 1, wps.length - 1));
     }
   }, [pos, step, route]);
+
+  // Highlight the current step's marker (red ring); plain ring for the rest.
+  useEffect(() => {
+    const Lm = L.current;
+    if (!Lm) return;
+    (route?.waypoints || []).forEach(wp => {
+      const m = markers.current[wp.position];
+      if (m) {
+        m.setIcon(Lm.divIcon({
+          className: 'xtp-wp',
+          html: waypointMarkerHtml(wp, 24, wp.position === step),
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }));
+      }
+    });
+  }, [step, route]);
 
   if (error) return <div className="xtp-gloading"><style>{STYLE}</style>Could not load route: {error}</div>;
   if (!route) return <div className="xtp-gloading"><style>{STYLE}</style>Loading…</div>;

@@ -96,14 +96,15 @@ export function addBaseLayers(Lm, map) {
 // turn blue) with a small triangle on its rim pointing in the camera heading
 // (north = up), so the Street View direction is visible on the map. `size` is the
 // dot diameter in px. Pair with divIcon className 'xtp-wp' + the .xtp-wp* styles.
-export function waypointMarkerHtml(wp, size = 26) {
+// `active` highlights the current step (red ring) in the guide.
+export function waypointMarkerHtml(wp, size = 26, active = false) {
   const color =
     wp.kind === 'start' ? '#1c7c2f' : wp.kind === 'destination' ? '#b0271f' : '#1455c0';
   const head = Math.round(wp.heading ?? 0);
   return (
     `<div class="xtp-wpmk" style="width:${size}px;height:${size}px">` +
     `<div class="xtp-wphead" style="transform:rotate(${head}deg)"><i class="xtp-wphead-tri"></i></div>` +
-    `<div class="xtp-wpdot" style="background:${color};font-size:${Math.round(size * 0.46)}px">${wp.position + 1}</div>` +
+    `<div class="xtp-wpdot${active ? ' xtp-wpdot-active' : ''}" style="background:${color};font-size:${Math.round(size * 0.46)}px">${wp.position + 1}</div>` +
     `</div>`
   );
 }
@@ -169,6 +170,8 @@ export const LIVE_STYLE = `
 .xtp-wpdot { position:absolute; inset:0; color:#fff; border-radius:50%; display:flex;
   align-items:center; justify-content:center; border:2px solid #fff; font-weight:700;
   box-shadow:0 1px 4px rgba(0,0,0,.4); }
+/* Current step in the guide: white gap + red ring so it stands out over any kind colour. */
+.xtp-wpdot-active { box-shadow:0 0 0 2px #fff, 0 0 0 5px #ff2d2d, 0 1px 6px rgba(0,0,0,.55); }
 `;
 
 // Generic OSM way names that aren't real streets — don't say "Turn onto sidewalk".
