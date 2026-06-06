@@ -42,8 +42,9 @@ const STYLE = `
 .xtp-gpanel > .xtp-sv { flex:1; min-height:0; }
 .xtp-gpanel > .xtp-sv img { width:100%; height:100%; object-fit:cover; }
 /* Between points (#C): shrink + dim the Street View, since you're not at a guidance point yet. */
-.xtp-gpanel.enroute > .xtp-sv { flex:none; height:30vh; opacity:.5; transition:height .3s, opacity .3s; }
-.xtp-genroute { text-align:center; font-size:13px; color:#aab2c0; padding:8px 16px 0; }
+.xtp-gpanel.enroute > .xtp-sv { flex:none; height:20vh; width:60%; margin:10px auto 0; border-radius:10px;
+  opacity:.45; overflow:hidden; transition:height .3s, width .3s, opacity .3s; }
+.xtp-genroute { text-align:center; font-size:14px; font-weight:700; color:#cdd3dd; padding:10px 16px 0; }
 .xtp-ginstr { padding:12px 16px 2px; font-size:16px; font-weight:700; text-align:center; }
 .xtp-gnavrow { display:flex; align-items:center; justify-content:center; gap:18px; padding:8px 16px 14px; }
 .xtp-gnav{ border:1px solid #3a4150; background:#1b212b; color:#fff; border-radius:10px;
@@ -161,11 +162,11 @@ const LiveGuidePage = ({ match, router }) => {
       setStep(0); // walk from the start whenever simulation begins
       let traveled = 0;
       const timer = setInterval(() => {
-        traveled += 8; // ~8 m per tick → brisk demo walk
+        traveled += 1; // 1 m per tick
         const p = pointAlong(path, segLen, total, traveled);
         setPos({ lat: p[0], lon: p[1] });
         if (traveled >= total) clearInterval(timer);
-      }, 400);
+      }, 500); // ~2 m/s — smooth, slow walk for previewing
       return () => clearInterval(timer);
     }
     if (navigator.geolocation) {
