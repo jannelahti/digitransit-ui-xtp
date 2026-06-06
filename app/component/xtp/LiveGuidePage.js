@@ -22,29 +22,33 @@ import {
  * demos. No images are stored — frames are fetched live from Google.
  */
 const STYLE = `
-.xtp-gwrap { position: relative; height: calc(100vh - 64px); display:flex; flex-direction:column; background:#11151c; }
-.xtp-gmap-wrap { position:relative; height:34vh; min-height:150px; flex:none; }
+/* Full-screen map; the guidance card overlays it. */
+.xtp-gwrap { position: relative; height: calc(100vh - 64px); background:#11151c; overflow:hidden; }
 .xtp-gmap { position:absolute; inset:0; }
-.xtp-gback{ position:absolute; top:10px; left:10px; z-index:1001; display:flex; align-items:center; gap:4px;
+.xtp-gback{ position:absolute; top:10px; left:10px; z-index:1100; display:flex; align-items:center; gap:4px;
   background:#fff; border:none; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18);
   padding:6px 14px 6px 11px; font-size:14px; font-weight:600; color:#1c2430; cursor:pointer; }
 .xtp-gback:hover{ background:#f1f3f6; }
-.xtp-gsim{ position:absolute; bottom:10px; left:10px; z-index:1001; border:none; border-radius:20px;
+.xtp-gsim{ position:absolute; top:50px; left:10px; z-index:1100; border:none; border-radius:20px;
   box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px; font-size:13px; font-weight:700; cursor:pointer;
   background:#1455c0; color:#fff; }
 .xtp-gsim.on{ background:#b0271f; }
 .xtp-gsim:hover{ filter:brightness(1.07); }
-.xtp-gtitle{ position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1000;
+.xtp-gtitle{ position:absolute; top:10px; left:50%; transform:translateX(-50%); z-index:1100;
   background:#fff; border-radius:20px; box-shadow:0 2px 10px rgba(0,0,0,.18); padding:6px 14px;
-  font-size:13px; font-weight:600; color:#1c2430; max-width:calc(100vw - 150px);
+  font-size:13px; font-weight:600; color:#1c2430; max-width:calc(100vw - 220px);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.xtp-gpanel { flex:1; display:flex; flex-direction:column; color:#fff; min-height:0; }
-.xtp-gpanel > .xtp-sv { flex:1; min-height:0; }
-.xtp-gpanel > .xtp-sv img { width:100%; height:100%; object-fit:cover; }
-/* Between points (#C): shrink + dim the Street View, since you're not at a guidance point yet. */
-.xtp-gpanel.enroute > .xtp-sv { flex:none; height:20vh; width:60%; margin:10px auto 0; border-radius:10px;
-  opacity:.45; overflow:hidden; transition:height .3s, width .3s, opacity .3s; }
-.xtp-genroute { text-align:center; font-size:14px; font-weight:700; color:#cdd3dd; padding:10px 16px 0; }
+/* Card over the map. At a point: bottom sheet with Street View + instruction + nav.
+ * Between points (#C): shrinks to a bottom-right thumbnail so the map goes near full-screen. */
+.xtp-gcard { position:absolute; left:0; right:0; bottom:0; z-index:1000; display:flex; flex-direction:column;
+  height:54%; background:#11151c; color:#fff; box-shadow:0 -4px 20px rgba(0,0,0,.45);
+  transition: height .3s, width .3s, right .3s, bottom .3s, border-radius .3s; }
+.xtp-gcard > .xtp-sv { flex:1; min-height:0; }
+.xtp-gcard > .xtp-sv img { width:100%; height:100%; object-fit:cover; }
+.xtp-gcard.mini { left:auto; right:12px; bottom:12px; width:42%; max-width:240px; height:30%; min-height:120px;
+  border-radius:12px; overflow:hidden; opacity:.95; box-shadow:0 4px 16px rgba(0,0,0,.5); }
+.xtp-gcard.mini .xtp-gnavrow { display:none; }
+.xtp-gcard.mini .xtp-ginstr { font-size:12px; padding:6px 10px 8px; }
 .xtp-ginstr { padding:12px 16px 2px; font-size:16px; font-weight:700; text-align:center; }
 .xtp-gnavrow { display:flex; align-items:center; justify-content:center; gap:18px; padding:8px 16px 14px; }
 .xtp-gnav{ border:1px solid #3a4150; background:#1b212b; color:#fff; border-radius:10px;
@@ -85,9 +89,11 @@ const LiveGuidePage = ({ match, router }) => {
   const wpLayer = useRef(null);
   const markers = useRef({});
   const dot = useRef(null);
+  const radiusCircle = useRef(null); // trigger radius of the current step
 
   const [svKey, setSvKey] = useState('');
   const [route, setRoute] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState(null);
   const [step, setStep] = useState(0);
   const [pos, setPos] = useState(null);
@@ -131,6 +137,7 @@ const LiveGuidePage = ({ match, router }) => {
         markers.current[wp.position] = marker;
       });
       map.current = m;
+      setMapReady(true);
       // The container is sized via flex/vh; make sure Leaflet measures it.
       setTimeout(() => map.current && map.current.invalidateSize(), 0);
     });
@@ -139,8 +146,25 @@ const LiveGuidePage = ({ match, router }) => {
       if (map.current) { map.current.remove(); map.current = null; }
       markers.current = {};
       dot.current = null;
+      radiusCircle.current = null;
+      setMapReady(false);
     };
   }, [route]);
+
+  // Draw the current step's trigger radius on the map (#B) so you can see the zone
+  // that flips the photo to full / advances the guide.
+  useEffect(() => {
+    const Lm = L.current;
+    if (!mapReady || !Lm || !map.current) return;
+    if (radiusCircle.current) { map.current.removeLayer(radiusCircle.current); radiusCircle.current = null; }
+    const w = (route?.waypoints || [])[step];
+    if (w) {
+      radiusCircle.current = Lm.circle([w.lat, w.lon], {
+        radius: w.triggerM ?? TRIGGER_DEFAULT_M,
+        color: '#ff2d2d', weight: 1, fillColor: '#ff2d2d', fillOpacity: 0.1,
+      }).addTo(map.current);
+    }
+  }, [step, route, mapReady]);
 
   // Position source: simulation walks the route polyline (the ▶ Simulate toggle or
   // `?simgps`); otherwise real GPS.
@@ -237,17 +261,14 @@ const LiveGuidePage = ({ match, router }) => {
   return (
     <div className="xtp-gwrap">
       <style>{STYLE}</style>
-      <div className="xtp-gmap-wrap">
-        <div ref={mapEl} className="xtp-gmap" />
-        <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
-        <div className="xtp-gtitle">{route.name}</div>
-        <button type="button" className={`xtp-gsim${sim ? ' on' : ''}`} onClick={() => setSim(s => !s)}>
-          {sim ? '⏸ Stop' : '▶ Simulate'}
-        </button>
-      </div>
-      <div className={`xtp-gpanel${atPoint ? '' : ' enroute'}`}>
+      <div ref={mapEl} className="xtp-gmap" />
+      <button type="button" className="xtp-gback" onClick={goBack}>‹ Back</button>
+      <div className="xtp-gtitle">{route.name}</div>
+      <button type="button" className={`xtp-gsim${sim ? ' on' : ''}`} onClick={() => setSim(s => !s)}>
+        {sim ? '⏸ Stop' : '▶ Simulate'}
+      </button>
+      <div className={`xtp-gcard${atPoint ? '' : ' mini'}`}>
         {wp && <LiveArrowImage wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
-        {!atPoint && <div className="xtp-genroute">Walking… keep going to the next point</div>}
         <div className="xtp-ginstr">{wp ? waypointLabel(wp, wps) : ''}</div>
         <div className="xtp-gnavrow">
           <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>

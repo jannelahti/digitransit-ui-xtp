@@ -176,7 +176,7 @@ export const LIVE_STYLE = `
   align-items:center; justify-content:center; border:2px solid #fff; font-weight:700;
   box-shadow:0 1px 4px rgba(0,0,0,.4); }
 /* Current step in the guide: white gap + red ring so it stands out over any kind colour. */
-.xtp-wpdot-active { box-shadow:0 0 0 2px #fff, 0 0 0 5px #ff2d2d, 0 1px 6px rgba(0,0,0,.55); }
+.xtp-wpdot-active { box-shadow:0 0 0 1px #fff, 0 0 0 3px #ff2d2d, 0 1px 5px rgba(0,0,0,.5); }
 `;
 
 // Generic OSM way names that aren't real streets — don't say "Turn onto sidewalk".
