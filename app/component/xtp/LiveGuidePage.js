@@ -246,14 +246,15 @@ const LiveGuidePage = ({ match, router }) => {
     } else {
       dot.current.setLatLng(ll);
     }
-    // Follow progress: zoom in to walking level the first time we get a position,
-    // then pan to keep the dot centred (respecting any manual zoom).
-    if (!followedOnce.current) {
-      map.current.setView(ll, Math.max(map.current.getZoom(), 17), { animate: true });
-      followedOnce.current = true;
-    } else {
-      map.current.panTo(ll, { animate: true, duration: 0.4 });
-    }
+    // Follow progress, keeping the dot centred in the VISIBLE area above the photo
+    // card (the full-screen map's centre sits behind it). Zoom to walking level on
+    // the first fix; afterwards keep the user's zoom. Offset the centre down by ~25%
+    // of the height so the dot lands in the upper, uncovered part of the map.
+    const h = mapEl.current ? mapEl.current.clientHeight : 0;
+    const z = Math.max(map.current.getZoom(), followedOnce.current ? 0 : 17);
+    const center = map.current.unproject(map.current.project(ll, z).add([0, h * 0.25]), z);
+    map.current.setView(center, z, { animate: true });
+    followedOnce.current = true;
   }, [pos]);
 
   // Auto-advance: jump to the FURTHEST upcoming waypoint we're within range of, so a
