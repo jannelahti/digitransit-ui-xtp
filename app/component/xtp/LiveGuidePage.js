@@ -60,6 +60,9 @@ const STYLE = `
 .xtp-gnav:hover:not(:disabled){ background:#262e3a; }
 .xtp-gnav:disabled{ opacity:.3; cursor:default; }
 .xtp-gcount{ font-size:14px; color:#aab2c0; min-width:54px; text-align:center; font-variant-numeric:tabular-nums; }
+.xtp-garrived{ flex:1; border:none; border-radius:10px; background:#1c7c2f; color:#fff; font-size:15px;
+  font-weight:700; padding:11px 0; cursor:pointer; }
+.xtp-garrived:hover{ background:#166626; }
 .xtp-gloading{ padding:40px; text-align:center; color:#5a6270; }
 ${LIVE_STYLE}
 `;
@@ -317,11 +320,19 @@ const LiveGuidePage = ({ match, router }) => {
       <div className={`xtp-gcard${atPoint ? '' : ' mini'}`}>
         {wp && <LiveArrowImage key={step} wp={wp} svKey={svKey} opts={{ w: 640, h: 480, noImage: wp.guidance === false }} />}
         <div className="xtp-ginstr">{wp ? waypointLabel(wp, wps) : ''}</div>
-        <div className="xtp-gnavrow">
-          <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>
-          <span className="xtp-gcount">{step + 1} / {wps.length}</span>
-          <button type="button" className="xtp-gnav" disabled={step >= wps.length - 1} onClick={() => setStep(step + 1)}>›</button>
-        </div>
+        {step >= wps.length - 1 ? (
+          // Arrived at the destination (e.g. the boarding stop): hand back to the
+          // normal trip view so the traveller can catch the bus.
+          <div className="xtp-gnavrow">
+            <button type="button" className="xtp-garrived" onClick={goBack}>✓ Arrived — back to trip</button>
+          </div>
+        ) : (
+          <div className="xtp-gnavrow">
+            <button type="button" className="xtp-gnav" disabled={step <= 0} onClick={() => setStep(step - 1)}>‹</button>
+            <span className="xtp-gcount">{step + 1} / {wps.length}</span>
+            <button type="button" className="xtp-gnav" disabled={step >= wps.length - 1} onClick={() => setStep(step + 1)}>›</button>
+          </div>
+        )}
       </div>
     </div>
   );
