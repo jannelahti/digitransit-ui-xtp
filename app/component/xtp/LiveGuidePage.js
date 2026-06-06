@@ -94,6 +94,8 @@ const LiveGuidePage = ({ match, router }) => {
   const markers = useRef({});
   const dot = useRef(null);
   const radiusCircle = useRef(null); // trigger radius of the current step
+  const routeBounds = useRef(null); // whole-route bounds, for the initial fit
+  const simUsed = useRef(false); // once true, stopping sim freezes instead of grabbing real GPS
 
   const [svKey, setSvKey] = useState('');
   const [route, setRoute] = useState(null);
@@ -131,7 +133,7 @@ const LiveGuidePage = ({ match, router }) => {
       addBaseLayers(Lm, m);
       if (route.polyline) {
         const line = Lm.polyline(decodePolyline(route.polyline), { color: '#1455c0', weight: 5, opacity: 0.75 }).addTo(m);
-        m.fitBounds(line.getBounds(), { padding: [40, 40] });
+        routeBounds.current = line.getBounds();
       }
       wpLayer.current = Lm.layerGroup().addTo(m);
       (route.waypoints || []).forEach(wp => {
@@ -145,8 +147,19 @@ const LiveGuidePage = ({ match, router }) => {
       });
       map.current = m;
       setMapReady(true);
-      // The container is sized via flex/vh; make sure Leaflet measures it.
-      setTimeout(() => map.current && map.current.invalidateSize(), 0);
+      // Measure the full-screen container, then frame the whole route in the area
+      // above the bottom card (so it isn't hidden behind the photo sheet).
+      setTimeout(() => {
+        if (!map.current) return;
+        map.current.invalidateSize();
+        if (routeBounds.current) {
+          const h = mapEl.current ? mapEl.current.clientHeight : 0;
+          map.current.fitBounds(routeBounds.current, {
+            paddingTopLeft: [40, 70],
+            paddingBottomRight: [40, Math.round(h * 0.56) + 20],
+          });
+        }
+      }, 0);
     });
     return () => {
       cancelled = true;
@@ -179,6 +192,7 @@ const LiveGuidePage = ({ match, router }) => {
   useEffect(() => {
     if (!route) return undefined;
     if (sim) {
+      simUsed.current = true; // remember we're in preview mode
       const path = decodePolyline(route.polyline || '');
       if (path.length < 2) return undefined;
       const segLen = [];
@@ -201,7 +215,9 @@ const LiveGuidePage = ({ match, router }) => {
       }, 500); // 1× ≈ 2 m/s; 2×/3× scale up
       return () => clearInterval(timer);
     }
-    if (navigator.geolocation) {
+    // Real GPS for actual walking — but once the user has previewed with the
+    // simulator, stopping it should FREEZE (not jump to the device's real location).
+    if (!simUsed.current && navigator.geolocation) {
       const wid = navigator.geolocation.watchPosition(
         p => setPos({ lat: p.coords.latitude, lon: p.coords.longitude }),
         () => {},
