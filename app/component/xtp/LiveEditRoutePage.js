@@ -525,7 +525,7 @@ const LiveEditRoutePage = ({ match }) => {
           <button type="button" className="xtp-btn success" onClick={save} disabled={saving}>
             Save changes
           </button>
-          <Link className="xtp-btn" to="/create-route">Back to editor</Link>
+          <Link className="xtp-btn" to="/routes">Cancel</Link>
           <div className="xtp-spacer" />
           <Link className="xtp-btn" to={`/routes/${id}`}>Preview</Link>
         </div>
